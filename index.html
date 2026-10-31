@@ -294,7 +294,7 @@
 
     <script>
       (function () {
-        const fallbackManifest = {
+        const bundledManifest = {
           mods: [
             {
               id: 'abyssal-rift-boss',
@@ -439,7 +439,8 @@
               if (!modUrl) continue;
 
               try {
-                const res = await fetch(modUrl, { cache: 'no-store' });
+                const resolvedUrl = new URL(modUrl, url).toString();
+                const res = await fetch(resolvedUrl, { cache: 'no-store' });
                 if (!res.ok) throw new Error('Mod failed to load');
                 const mod = await res.json();
                 addMod(mod);
@@ -450,21 +451,23 @@
 
             status.textContent = 'Mods loaded successfully.';
           } catch (err) {
-            console.warn('Manifest fetch failed, using fallback mod pack.', err);
-            const fallback = fallbackManifest.mods || [];
-            fallback.forEach(addMod);
-            status.textContent = 'Using embedded fallback mod pack.';
+            console.warn('Manifest fetch failed, using bundled mod pack.', err);
+            const bundledMods = bundledManifest.mods || [];
+            bundledMods.forEach(addMod);
+            status.textContent = 'Using bundled mod pack.';
           }
         }
 
+        const manifestUrl = new URL('./mods/manifest.json', window.location.href).toString();
+
         document.getElementById('loadBtn').addEventListener('click', () => {
-          loadManifest('/mods/manifest.json');
+          loadManifest(manifestUrl);
         });
 
         renderStats();
         renderModList();
         renderLists();
-        loadManifest('/mods/manifest.json');
+        loadManifest(manifestUrl);
       })();
     </script>
   </body>
