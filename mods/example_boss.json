@@ -1,0 +1,31 @@
+{
+  "id": "abyssal-rift-boss",
+  "name": "Abyssal Rift Boss",
+  "type": "boss",
+  "bosses": [
+    {
+      "id": "abyssal-rift-boss",
+      "name": "Abyssal Rift Boss",
+      "hp": 260,
+      "attackPattern": ["dash", "orbital-shot", "shockwave"],
+      "reward": 150,
+      "palette": {
+        "primary": "#8a5cff",
+        "secondary": "#ff6bd6"
+      }
+    }
+  ],
+  "stages": [
+    {
+      "id": "abyssal-rift",
+      "name": "Abyssal Rift",
+      "theme": "storm",
+      "bossId": "abyssal-rift-boss",
+      "difficulty": 1.2
+    }
+  ],
+  "settings": {
+    "difficultyMultiplier": 1.15,
+    "allowCustomBosses": true
+  }
+}
