@@ -1,0 +1,38 @@
+{
+  "name": "axiom-protocol",
+  "version": "1.0.0",
+  "description": "Axiom Protocol packaged as a desktop executable.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^31.7.1",
+    "electron-builder": "^24.13.0"
+  },
+  "build": {
+    "appId": "com.axiomprotocol.game",
+    "productName": "Axiom Protocol",
+    "files": [
+      "main.js",
+      "index.html",
+      "mods/**/*",
+      "LICENSE"
+    ],
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ]
+    },
+    "portable": {
+      "artifactName": "Axiom-Protocol-Portable.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
