@@ -1,0 +1,204 @@
+,Math.round(Wl/330));
+  let flierBudget = (stageId==='cryo'||stageId==='storm'||stageId==='abyss')?2:0; /* cap total fliers */
+  for(let i=0;i<count;i++){
+    const ex=560+i*((Wl-1500)/count)+R()*120;
+    let t=types[i%types.length];
+    if(t==='flier'){ if(flierBudget>0)flierBudget--; else t='walker'; }
+    /* ground units spawn near the floor so they're not hanging in the air */
+    const groundY = H-48-(t==='turret'?24:t==='walker'?22:20);
+    const y = (t==='flier'||t==='orb') ? 120+R()*180 : groundY-R()*4;
+    spawns.push({x:ex,y,type:t});
+  }
+  /* items: health drops + hidden life core off the main path */
+  items.push({x:Wl*0.30|0,y:90,w:16,h:16,type:'hp'});
+  items.push({x:Wl*0.50|0,y:H-200,w:16,h:16,type:'hp'});
+  items.push({x:Wl*0.66|0,y:H-200,w:16,h:16,type:'ammo'});
+  if(!isFinal){
+    const tx=1180+R()*300|0;
+    plats.push({x:tx-20,y:96,w:120,h:14});
+    items.push({x:tx+30,y:70,w:18,h:18,type:'tank'});
+    /* armor part — only if not already collected this run */
+    const part=STAGE_UPG[stageId];
+    if(part&&!G.gotUpg[part]){
+      const ux=Wl*0.78|0;
+      plats.push({x:ux-30,y:H-300,w:120,h:14});
+      plats.push({x:ux-30,y:H-180,w:24,h:132}); /* climbing wall to reach it */
+      items.push({x:ux+34,y:H-326,w:20,h:20,type:'upg',part});
+    }
+  }
+  /* boss arena */
+  const door=Wl-880;
+  return {id:stageId,def,w:Wl,h:Hl,plats,hazards,items,spawns,arena:{x:Wl-860,y:0,w:860,h:H},door,camMin:0,bossStarted:false};
+}
+
+function startStage(stageId,respawn=false){
+  G.stage=stageId; G.state='PLAY'; G.t=0; paused=false;
+  if(stageId==='core')G.noDamageFinal=true;
+  for(const k in G.wEnergy)G.wEnergy[k]=28;
+  curLevel=makeLevel(stageId);
+  enemies=curLevel.spawns.map(s=>new Enemy(s.x,s.y,s.type));
+  shots=[];eshots=[];parts=[];boss=null;
+  player=new Player(CHARS[G.char]);
+  player.x=60;player.y=H-200;
+  cam.x=0;cam.y=0;
+  if(!respawn)toastQ=[];
+  playSong(curLevel.def.song);
+  if(!respawn)toast((stageId==='core'?FINAL.name:curLevel.def.name)+' — INFILTRATE AND NEUTRALIZE');
+}
+
+function bossDefeated(){
+  burst(boss.x+boss.w/2,boss.y+boss.h/2,60,'#fff',8,5,.08);
+  if(G.stage==='core'){
+    G.state='ENDING';G.endT=0;stopSong();playSong('end');
+    return;
+  }
+  G.beaten[G.stage]=true;
+  G.wEnergy[G.stage]=28;
+  G.state='GETWEAPON';G.gwT=0;stopSong();SFX.tank();
+}
+
+/* ---------- toasts ---------- */
+let toastQ=[];
+function toast(msg){toastQ.push({msg,t:0});}
+function drawToasts(){
+  if(!toastQ.length)return;const t0=toastQ[0];t0.t++;
+  const a=t0.t<20?t0.t/20:t0.t>160?(180-t0.t)/20:1;
+  if(t0.t>180){toastQ.shift();return;}
+  CX.globalAlpha=clamp(a,0,1);
+  CX.fillStyle='rgba(5,8,20,.8)';CX.fillRect(W/2-280,64,560,34);
+  CX.strokeStyle='#28e6ff';CX.strokeRect(W/2-280,64,560,34);
+  CX.fillStyle='#cfeeff';CX.font='700 15px Orbitron';CX.textAlign='center';
+  CX.fillText(t0.msg,W/2,86);CX.globalAlpha=1;CX.textAlign='left';
+}
+
+/* ---------- backgrounds ---------- */
+const ambP=[];
+function drawBG(def,camx){
+  /* posterized 16-bit sky: flat colour bands instead of a smooth gradient */
+  const BANDS=18;
+  for(let b=0;b<BANDS;b++){const t=b/(BANDS-1);
+    CX.fillStyle=t<.5?mixHex(def.sky[0],def.sky[1],t*2):mixHex(def.sky[1],def.sky[2],(t-.5)*2);
+    CX.fillRect(0,Math.floor(b*H/BANDS/PX)*PX,W,Math.ceil(H/BANDS/PX)*PX+PX);}
+  const seed=def.id==='core'?555:def.id.length*77+5, R=sRand(seed);
+  /* layer 0 — distant twinkling lights / stars */
+  const R0=sRand(seed*3+1);
+  for(let i=0;i<60;i++){
+    const sx=((R0()*W*2)-(camx*.04))%(W+40)-20, sy=R0()*H*.62;
+    const tw=.3+0.7*Math.abs(Math.sin(G.t*.03+i));
+    CX.globalAlpha=tw*.6;CX.fillStyle=i%5===0?def.platEdge:'#cdd6f0';
+    CX.fillRect(sx,sy,R0()<.2?2:1,R0()<.2?2:1);
+  }
+  CX.globalAlpha=1;
+  /* big celestial body with corona */
+  const mx=W-180-(camx*.05)%60, my=104;
+  CX.shadowColor=def.platEdge;CX.shadowBlur=50;
+  CX.fillStyle=hexA(def.platEdge,.14);CX.beginPath();CX.arc(mx,my,72,0,TAU);CX.fill();
+  CX.fillStyle=hexA(def.platEdge,.26);CX.beginPath();CX.arc(mx,my,46,0,TAU);CX.fill();
+  CX.fillStyle=hexA(def.sky[2],.9);CX.beginPath();CX.arc(mx,my,40,0,TAU);CX.fill();
+  CX.shadowBlur=0;
+  /* faint banding across the orb */
+  CX.globalAlpha=.18;CX.fillStyle=def.platEdge;
+  for(let b=0;b<4;b++)CX.fillRect(mx-38,my-26+b*16,76,4);
+  CX.globalAlpha=1;
+  /* pixel clouds (open-sky stages) */
+  if(!['abyss','shadow','core'].includes(def.id))drawPixelClouds(def,camx);
+  /* layer 1 — far silhouette ridge with atmospheric haze */
+  CX.fillStyle=hexA(def.sky[1],.55);
+  for(let i=0;i<22;i++){
+    const sx=((i*150)-(camx*.12))%(W+300)-150;
+    const hgt=70+((Math.sin(i*5.7+seed)*.5+.5)*150)|0;
+    drawSilhouette(def,sx,hgt,1.4);
+  }
+  /* haze band over far layer */
+  const hz=CX.createLinearGradient(0,H*.34,0,H*.7);
+  hz.addColorStop(0,'rgba(0,0,0,0)');hz.addColorStop(1,hexA(def.sky[1],.5));
+  CX.fillStyle=hz;CX.fillRect(0,H*.34,W,H*.36);
+  /* unique per-stage midground scene */
+  bgScene(def,camx);
+  /* layer 2 — mid structures with gradient + flickering windows */
+  for(let i=0;i<16;i++){
+    const sx=((i*250)-(camx*.34))%(W+500)-250;
+    const top=H-200-((i*53+seed)%150), bw=52;
+    const sg=CX.createLinearGradient(0,top,0,H);
+    sg.addColorStop(0,hexA(def.sky[2],.9));sg.addColorStop(1,'rgba(0,0,0,.85)');
+    CX.fillStyle=sg;CX.fillRect(sx,top,bw,H);
+    /* edge light */
+    CX.fillStyle=hexA(def.platEdge,.5);CX.fillRect(sx,top,bw,2);CX.fillRect(sx,top,2,H-top);
+    /* windows flicker */
+    for(let wy=top+12;wy<H-30;wy+=30)for(let wx=0;wx<2;wx++){
+      const lit=((i*7+wy+wx*13)%5)<3, fl=Math.sin(G.t*.05+i+wy)>(-.2);
+      CX.fillStyle=lit&&fl?hexA(def.platEdge,.7):'rgba(0,0,0,.4)';
+      CX.fillRect(sx+10+wx*22,wy,9,12);
+    }
+  }
+  /* layer 3 — near silhouette (darkest, fastest) */
+  CX.fillStyle='rgba(0,0,0,.6)';
+  for(let i=0;i<10;i++){
+    const sx=((i*340)-(camx*.6))%(W+680)-340;
+    const hgt=120+((Math.sin(i*9.1+seed)*.5+.5)*200)|0;
+    drawSilhouette(def,sx,hgt,2.0);
+  }
+  /* per-stage atmospheric accent */
+  bgAccent(def,camx,mx,my);
+  /* ambient weather */
+  spawnAmbient(def);
+  for(let i=ambP.length-1;i>=0;i--){const p=ambP[i];p.x+=p.vx;p.y+=p.vy;p.l--;
+    if(p.l<=0||p.y>H+20||p.y<-30||p.x<-30||p.x>W+30){ambP.splice(i,1);continue;}
+    const a=p.fade?Math.min(1,p.l/30):1;CX.globalAlpha=a;
+    if(p.glow){CX.shadowColor=p.c;CX.shadowBlur=6;}
+    CX.fillStyle=p.c;
+    if(p.rain)CX.fillRect(p.x,p.y,1.5,11);
+    else if(p.gl){CX.globalAlpha=.3;CX.fillRect(p.x,p.y,p.s*4,2);}
+    else if(p.circ){CX.beginPath();CX.arc(p.x,p.y,p.s,0,TAU);CX.fill();}
+    else CX.fillRect(p.x,p.y,p.s,p.s);
+    CX.shadowBlur=0;CX.globalAlpha=1;}
+  if(def.amb==='rain'&&Math.random()<.004){flash=5;flashCol='rgba(200,200,255,.25)';}
+}
+function drawPixelClouds(def,camx){
+  const lite=mixHex(def.sky[2],'#ffffff',.65), mid=mixHex(def.sky[2],'#ffffff',.4), shd=mixHex(def.sky[2],'#ffffff',.18);
+  const SHAPES=[
+    ['.....####.........','...#########..###.','.################.','##################','.################.'],
+    ['...###......','.########...','###########.','############','.##########.'],
+    ['....####....####...','..###########.####.','.#################..','###################','.#################.']];
+  const R=sRand(def.id.length*911+3);
+  for(let i=0;i<6;i++){
+    const shape=SHAPES[i%3], u=PX*(i%2?3:4);
+    const wpx=shape[0].length*u, span=W+wpx+200;
+    const cx=(((R()*span)-camx*(.04+i*.01)-G.t*.06*(1+i*.15))%span+span)%span-wpx-100;
+    const cy=Math.round((50+R()*130)/PX)*PX, ox=Math.round(cx/PX)*PX;
+    shape.forEach((row,ry)=>{CX.fillStyle=ry===shape.length-1?shd:ry===shape.length-2?mid:lite;
+      for(let rx=0;rx<row.length;rx++)if(row[rx]==='#')CX.fillRect(ox+rx*u,cy+ry*u,u,u);});
+  }
+}
+function drawSilhouette(def,sx,hgt,grow){
+  const id=def.id;
+  if(id==='magma'){CX.beginPath();CX.moveTo(sx,H);CX.lineTo(sx+70*grow,H-hgt);CX.lineTo(sx+150*grow,H);CX.fill();}
+  else if(id==='cryo'){CX.beginPath();CX.moveTo(sx,H);CX.lineTo(sx+50,H-hgt-40);CX.lineTo(sx+90,H-hgt);CX.lineTo(sx+150,H);CX.fill();}
+  else if(id==='storm'){CX.fillRect(sx+30,H-hgt-60,80,hgt+60);CX.fillRect(sx+50,H-hgt-110,30,60);}
+  else if(id==='bio'){CX.beginPath();CX.arc(sx+80,H-hgt/2,60,0,TAU);CX.fill();CX.fillRect(sx+72,H-hgt/2,16,hgt);}
+  else if(id==='abyss'){CX.beginPath();CX.moveTo(sx,H);CX.lineTo(sx+40,H-hgt);CX.lineTo(sx+70,H-hgt+30);CX.lineTo(sx+110,H-hgt-20);CX.lineTo(sx+150,H);CX.fill();}
+  else if(id==='shadow'){CX.beginPath();CX.moveTo(sx+40,H);CX.lineTo(sx+20,H-hgt);CX.lineTo(sx+60,H-hgt-30);CX.lineTo(sx+100,H-hgt);CX.lineTo(sx+80,H);CX.fill();}
+  else if(id==='metal'){CX.fillRect(sx+10,H-hgt,40,hgt);CX.fillRect(sx+54,H-hgt*.7,30,hgt);CX.fillRect(sx+20,H-hgt-18,8,18);}
+  else if(id==='sand'){CX.beginPath();CX.moveTo(sx,H);CX.quadraticCurveTo(sx+75,H-hgt,sx+150,H);CX.fill();}
+  else {CX.fillRect(sx+20,H-hgt-80,16,hgt+80);CX.fillRect(sx+60,H-hgt-30,16,hgt+30);CX.fillRect(sx+100,H-hgt-110,16,hgt+110);}
+}
+function bgScene(def,camx){
+  const id=def.id, ed=def.platEdge;
+  const wrap=(base,f)=>((base-camx*f)%(W+460))-230;
+  CX.save();
+  if(id==='magma'){ /* volcano belching embers + lava lake */
+    const vx=wrap(560,.2), vy=H-150;
+    CX.fillStyle=hexA('#2a0c06',.92);
+    CX.beginPath();CX.moveTo(vx-130,H-44);CX.lineTo(vx,vy);CX.lineTo(vx+130,H-44);CX.closePath();CX.fill();
+    CX.fillStyle=hexA(ed,.8);CX.beginPath();CX.moveTo(vx-26,vy+8);CX.lineTo(vx,vy-6);CX.lineTo(vx+26,vy+8);CX.closePath();CX.fill();
+    CX.globalAlpha=.5;for(let i=0;i<6;i++){const t=(G.t*.6+i*40)%200;CX.fillStyle=hexA('#ff9a4a',1-t/200);
+      CX.fillRect(vx+Math.sin(i+t*.04)*22-2,vy-6-t,3,3);}
+    CX.globalAlpha=1;const lg=CX.createLinearGradient(0,H-70,0,H-44);
+    lg.addColorStop(0,'rgba(255,90,20,0)');lg.addColorStop(1,hexA(ed,.5));CX.fillStyle=lg;CX.fillRect(0,H-70,W,26);
+  } else if(id==='cryo'){ /* ice spires + planetary ring */
+    CX.strokeStyle=hexA(ed,.22);CX.lineWidth=10;
+    CX.beginPath();CX.ellipse(W*.5,150,360,46,0.5,0,TAU);CX.stroke();
+    for(let i=0;i<7;i++){const sx=wrap(120+i*220,.22),hg=120+((i*53)%160);
+      CX.fillStyle=hexA('#bfe8ff',.16);CX.beginPath();CX.moveTo(sx,H-44);CX.lineTo(sx+18,H-44-hg);CX.lineTo(sx+36,H-44);CX.closePath();CX.fill();
+      CX.fillStyle=hexA(ed,.3);CX.fillRect(sx+16,H-44-hg,4,hg*.5);}
+  } else if

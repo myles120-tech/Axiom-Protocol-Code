@@ -1,0 +1,179 @@
+RS.VOLT).melee?'PLASMA EDGE':'BUSTER'):STAGES.find(s2=>s2.id===G.weapon).weapon;
+  CX.textAlign='center';CX.fillStyle='#e8ecff';CX.fillText(wname,384,14);
+  const sz=20, cxs=384;
+  if(owned.length>1){
+    weaponIcon(owned[(wi-1+owned.length)%owned.length],cxs-sz*1.5-6,20,sz,false);
+    weaponIcon(owned[(wi+1)%owned.length],cxs+sz*0.5+6,20,sz,false);
+    CX.fillStyle='#ffd24a';const al=cxs-sz*1.5-20, ar=cxs+sz*1.5+20;
+    for(let r=0;r<4;r++){CX.fillRect(al+r*PX,30-r*PX,PX,(r*2+1)*PX);CX.fillRect(ar-r*PX,30-r*PX,PX,(r*2+1)*PX);}
+  }
+  weaponIcon(G.weapon,cxs-sz/2,20,sz,true);
+  CX.fillStyle='#ffd24a';CX.fillRect(cxs-sz/2-2,18,sz+4,PX);CX.fillRect(cxs-sz/2-2,20+sz+2-PX,sz+4,PX);
+  /* weapon energy / charge */
+  CX.textAlign='left';CX.fillStyle='#e8ecff';
+  if(G.weapon!=='buster'){const wd=STAGES.find(s2=>s2.id===G.weapon);
+    CX.fillText('WPN.ENERGY',470,14);hudBar(470,22,170,10,(G.wEnergy[G.weapon]||0)/28,wd.wcol,14);
+    CX.fillText(String(G.wEnergy[G.weapon]|0).padStart(2,'0'),652,32);}
+  else {const melee=(CHARS[G.char]||CHARS.VOLT).melee, ch=player?player.charge:0;
+    CX.fillText(melee?'EDGE READY':'CHARGE',470,14);
+    hudBar(470,22,170,10,melee?1:ch/90,ch>75?'#aaf0ff':(CHARS[G.char]||CHARS.VOLT).col,3);}
+  /* timer + score */
+  const fr=G.t, mm=Math.floor(fr/3600), ss=Math.floor(fr/60)%60, cs=Math.floor((fr%60)*100/60);
+  CX.textAlign='right';CX.fillStyle='#e8ecff';
+  CX.fillText(mm+':'+String(ss).padStart(2,'0')+'.'+String(cs).padStart(2,'0'),W-14,18);
+  CX.fillText(String(G.score||0).padStart(6,'0'),W-14,38);
+  CX.textAlign='left';
+  /* --- boss bar (bottom centre) --- */
+  if(boss&&!boss.dead&&(boss.phase!=='intro'||boss.introHP>0)){
+    const show=boss.phase==='intro'?boss.introHP:Math.max(0,boss.hp);
+    const bw=300,bx=W/2-bw/2,by=H-22;
+    CX.fillStyle='rgba(7,7,13,.85)';CX.fillRect(bx-12,by-26,bw+24,40);
+    CX.textAlign='center';CX.fillStyle='#f2e8ff';
+    CX.fillText(boss.name||boss.def.boss||'NEXUS PRIME',W/2,by-8);CX.textAlign='left';
+    hudBar(bx,by,bw,8,show/boss.maxHP,show/boss.maxHP<.3?'#ff5d5d':'#3aa0ff',1);
+  }
+  drawToasts();
+}
+
+/* ---------- screens ---------- */
+function drawTitle(){
+  drawBG({id:'storm',sky:['#05060e','#0c1030','#1c2152'],platEdge:'#28e6ff',amb:'glitch'},G.t*.6);
+  /* grid floor */
+  CX.strokeStyle='rgba(40,230,255,.18)';CX.lineWidth=1;
+  for(let i=0;i<14;i++){const y=H*0.62+i*i*2.4;CX.beginPath();CX.moveTo(0,y);CX.lineTo(W,y);CX.stroke();}
+  for(let i=-12;i<=12;i++){CX.beginPath();CX.moveTo(W/2+i*14,H*0.62);CX.lineTo(W/2+i*120,H);CX.stroke();}
+  const ty=150+Math.sin(G.t*.03)*4;
+  CX.textAlign='center';
+  CX.font='900 64px Orbitron';
+  CX.shadowColor='#28e6ff';CX.shadowBlur=30;
+  const tg=CX.createLinearGradient(0,ty-50,0,ty+10);tg.addColorStop(0,'#eafcff');tg.addColorStop(.55,'#28e6ff');tg.addColorStop(1,'#0a5fa8');
+  CX.fillStyle=tg;CX.fillText('AXIOM',W/2,ty);
+  CX.shadowColor='#ff2e88';
+  const tg2=CX.createLinearGradient(0,ty+10,0,ty+74);tg2.addColorStop(0,'#ffe2ef');tg2.addColorStop(.55,'#ff2e88');tg2.addColorStop(1,'#7a0f3a');
+  CX.fillStyle=tg2;CX.fillText('PROTOCOL',W/2,ty+68);
+  CX.shadowBlur=0;
+  CX.font='600 16px Rajdhani';CX.fillStyle='#9fb4ff';
+  CX.fillText('T H E   M A V E R I C K   D A W N', W/2, ty+104);
+  /* VITA EDITION badge */
+  CX.save();CX.translate(W/2,ty+134);
+  CX.fillStyle='rgba(40,230,255,.12)';CX.strokeStyle='#28e6ff';CX.lineWidth=1.5;
+  CX.fillRect(-92,-15,184,28);CX.strokeRect(-92,-15,184,28);
+  CX.font='700 14px Orbitron';CX.fillStyle='#28e6ff';CX.textAlign='center';
+  CX.fillText('PS VITA  EDITION',0,5);CX.restore();
+  if(Math.floor(G.t/30)%2===0){
+    CX.font='700 18px Orbitron';CX.fillStyle='#fff';
+    CX.fillText(gpConnected?'PRESS  START':'PRESS  ENTER / START',W/2,406);}
+  CX.font='600 12px Rajdhani';CX.fillStyle=gpConnected?'#5dff7a':'#5b6aa0';
+  CX.fillText(gpConnected?'◉ CONTROLLER DETECTED — ✕ jump · ▢ fire · ◯ dash · L/R weapon':'960×544 NATIVE · CONTROLLER · TOUCHSCREEN · KEYBOARD',W/2,448);
+  CX.font='600 13px Rajdhani';CX.fillStyle='#5b6aa0';
+  CX.fillText('AN ORIGINAL HUNTER STORY — EIGHT CITADELS · NINE WARLORDS · MULTIPLE FATES',W/2,474);
+  CX.textAlign='left';
+  if(tap('OK')){SFX.sel();G.state='STORY';G.t=0;}
+}
+const STORY=['YEAR 22XX. THE ORBITAL MIND "NEXUS PRIME" HAS TURNED.',
+ 'EIGHT WARLORD CITADELS NOW BURN ACROSS THE CONTINENT,','EACH GUARDED BY A CORRUPTED GUARDIAN FRAME.',
+ '','TWO HUNTERS ANSWER THE LAST TRANSMISSION.','ONLY ONE PROTOCOL REMAINS:','',
+ 'NEUTRALIZE THE GUARDIANS. CLAIM THEIR CORES.','BREACH THE NEXUS. DECIDE THE FUTURE.'];
+function drawStory(){
+  CX.fillStyle='#03040a';CX.fillRect(0,0,W,H);
+  CX.textAlign='center';CX.font='600 19px Rajdhani';
+  const lines=Math.min(STORY.length,Math.floor(G.t/40)+1);
+  for(let i=0;i<lines;i++){
+    const a=clamp((G.t-i*40)/30,0,1);
+    CX.globalAlpha=a;CX.fillStyle=i>=7?'#28e6ff':'#b9c6f0';
+    CX.fillText(STORY[i],W/2,140+i*32);}
+  CX.globalAlpha=1;CX.textAlign='left';
+  if(G.t>STORY.length*40+30||tap('OK')){SFX.sel();G.state='CHARSEL';G.t=0;}
+}
+function drawCharPortrait(key,x,y,scale,sel){
+  const c=CHARS[key];
+  CX.save();CX.translate(x,y);CX.scale(scale,scale);
+  /* aura */
+  if(sel){CX.shadowColor=c.col;CX.shadowBlur=34;
+    CX.fillStyle=hexA(c.col,.1);CX.beginPath();CX.arc(0,10,76,0,TAU);CX.fill();CX.shadowBlur=0;}
+  /* body bust */
+  const g=CX.createLinearGradient(0,-50,0,60);g.addColorStop(0,c.col);g.addColorStop(1,c.col2);
+  CX.fillStyle=g;
+  CX.fillRect(-34,18,68,46); /* shoulders */
+  CX.fillStyle='#0a0f1e';CX.fillRect(-34,34,68,7);
+  CX.fillStyle='#fff';CX.fillRect(-7,24,14,8); /* gem */
+  /* head */
+  CX.fillStyle=g;CX.fillRect(-22,-34,44,46);
+  CX.fillStyle=c.col2;CX.fillRect(-22,-34,44,10);
+  CX.fillStyle='#e8f6ff';CX.fillRect(16,-42,9,22); /* fin */
+  CX.fillStyle='#0a0f1e';CX.fillRect(-14,-16,34,14);
+  CX.fillStyle=c.col;CX.shadowColor=c.col;CX.shadowBlur=10;CX.fillRect(-6,-13,22,8);CX.shadowBlur=0;
+  if(key==='ASH'){ /* blade on back */
+    CX.save();CX.rotate(-.5);CX.fillStyle='#cfd8ff';CX.fillRect(20,-70,7,70);CX.restore();}
+  CX.restore();
+}
+function drawCharSel(){
+  drawBG({id:'cryo',sky:['#05060e','#0a1230','#142457'],platEdge:'#5b6aa0',amb:'snow'},G.t*.4);
+  CX.fillStyle='rgba(3,4,12,.55)';CX.fillRect(0,0,W,H);
+  CX.textAlign='center';
+  CX.font='900 30px Orbitron';CX.fillStyle='#eaf2ff';CX.shadowColor='#28e6ff';CX.shadowBlur=14;
+  CX.fillText('SELECT YOUR HUNTER',W/2,70);CX.shadowBlur=0;
+  const keys=['VOLT','ASH'];
+  if(tap('L')){G.csIdx=(G.csIdx+1)%2;SFX.blip();}
+  if(tap('R')){G.csIdx=(G.csIdx+1)%2;SFX.blip();}
+  keys.forEach((k,i)=>{
+    const sel=G.csIdx===i, x=W/2+(i===0?-220:220), c=CHARS[k];
+    CX.fillStyle=sel?'rgba(10,16,40,.9)':'rgba(8,10,24,.7)';
+    CX.strokeStyle=sel?c.col:'#26305a';CX.lineWidth=sel?2:1;
+    CX.fillRect(x-160,110,320,330);CX.strokeRect(x-160,110,320,330);
+    drawCharPortrait(k,x,210,sel?1.15:1,sel);
+    CX.font='900 24px Orbitron';CX.fillStyle=sel?c.col:'#7a87b8';
+    CX.fillText(c.name,x,318);
+    CX.font='600 15px Rajdhani';CX.fillStyle='#9fb4ff';CX.fillText(c.title,x,340);
+    CX.font='400 14px Rajdhani';CX.fillStyle='#b9c6f0';
+    c.desc.forEach((d,j)=>CX.fillText(d,x,368+j*20));
+    CX.font='600 12px Rajdhani';CX.fillStyle=sel?'#fff':'#5b6aa0';
+    CX.fillText(k==='VOLT'?'CHARGE BUSTER · WALL KICK · STEADY FRAME':'PLASMA EDGE · DOUBLE JUMP · SWIFT FRAME',x,428);
+  });
+  if(Math.floor(G.t/30)%2===0){CX.font='700 15px Orbitron';CX.fillStyle='#fff';CX.fillText('ENTER TO DEPLOY',W/2,490);}
+  CX.textAlign='left';
+  if(tap('OK')){G.char=keys[G.csIdx];SFX.sel();G.state='STAGESEL';G.t=0;playSong('select');}
+}
+function drawStageSel(){
+  const allBeaten=STAGES.every(s=>G.beaten[s.id]);
+  const beatCount=STAGES.filter(s=>G.beaten[s.id]).length;
+  drawBG({id:'bio',sky:['#04050e','#0a0f2a','#101a45'],platEdge:'#28e6ff',amb:'glitch'},G.t*.3);
+  CX.fillStyle='rgba(3,4,12,.68)';CX.fillRect(0,0,W,H);
+  CX.textAlign='center';
+  CX.font='900 24px Orbitron';CX.fillStyle='#eaf2ff';CX.shadowColor='#28e6ff';CX.shadowBlur=12;
+  CX.fillText(allBeaten?'THE NEXUS AWAITS':'SELECT TARGET CITADEL',W/2,42);CX.shadowBlur=0;
+  /* 3x3 grid: cells 0-8 row-major; center (4) is the Core, the 8 bosses fill the rest */
+  const order=[0,1,2,3,-1,4,5,6,7]; // grid cell -> stage index (-1 = core)
+  const gx0=W/2-3*98, gy0=70, cw=188, ch=128, gapx=8, gapy=8;
+  /* navigation across the 9 grid cells: L/R steps linearly (wraps), U/D jumps rows */
+  if(tap('L')){G.selIdx=(G.selIdx+8)%9;SFX.blip();}
+  if(tap('R')){G.selIdx=(G.selIdx+1)%9;SFX.blip();}
+  if(tap('U')){const c=G.selIdx%3,r=(G.selIdx/3|0);G.selIdx=((r+2)%3)*3+c;SFX.blip();}
+  if(tap('D')){const c=G.selIdx%3,r=(G.selIdx/3|0);G.selIdx=((r+1)%3)*3+c;SFX.blip();}
+  for(let cell=0;cell<9;cell++){
+    const gc=cell%3, gr=(cell/3|0);
+    const px=gx0+gc*(cw+gapx), py=gy0+gr*(ch+gapy), sel=G.selIdx===cell;
+    const si=order[cell];
+    if(si===-1){ /* CORE */
+      const lit=allBeaten;
+      CX.fillStyle=sel?'rgba(22,8,30,.97)':'rgba(10,5,16,.85)';
+      CX.strokeStyle=lit?(sel?'#d24aff':'#7a1f99'):'#26305a';CX.lineWidth=sel?2.5:1;
+      CX.fillRect(px,py,cw,ch);CX.strokeRect(px,py,cw,ch);
+      if(lit){CX.save();CX.translate(px+cw/2,py+30);CX.scale(1.05,1.05);CX.translate(-13,-21);
+        Boss.prototype.drawCore.call({t:G.t,onG:true});CX.restore();
+        CX.font='700 14px Orbitron';CX.fillStyle=sel?'#fff':'#d24aff';CX.fillText('THE CORE',px+cw/2,py+ch-26);
+        CX.font='600 11px Rajdhani';CX.fillStyle='#e8c8ff';CX.fillText('FINAL PROTOCOL',px+cw/2,py+ch-10);
+      }else{
+        CX.font='900 30px Orbitron';CX.fillStyle='#3a2a4a';CX.fillText('?',px+cw/2,py+58);
+        CX.font='600 11px Rajdhani';CX.fillStyle='#5b6aa0';CX.fillText('SIGNAL LOCKED',px+cw/2,py+ch-26);
+        CX.fillText(beatCount+' / 8 CORES',px+cw/2,py+ch-10);}
+      continue;
+    }
+    const s=STAGES[si], done=G.beaten[s.id];
+    CX.fillStyle=sel?'rgba(12,18,44,.97)':'rgba(8,10,24,.8)';
+    CX.strokeStyle=sel?s.wcol:'#26305a';CX.lineWidth=sel?2.5:1;
+    CX.fillRect(px,py,cw,ch);CX.strokeRect(px,py,cw,ch);
+    const mg=CX.createLinearGradient(0,py,0,py+74);mg.addColorStop(0,s.sky[0]);mg.addColorStop(1,s.sky[2]);
+    CX.fillStyle=mg;CX.fillRect(px+6,py+6,cw-12,68);
+    CX.fillStyle=s.plat;CX.fillRect(px+6,py+62,cw-12,12);
+ 

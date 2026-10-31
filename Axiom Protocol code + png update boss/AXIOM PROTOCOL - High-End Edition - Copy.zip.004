@@ -1,0 +1,158 @@
+('F')){fireBuster(this,0);this.shootT=18;}
+      if(Keys.F){this.charge=Math.min(this.charge+1,90);
+        if(this.charge===31||this.charge===76)SFX.charge1();
+        if(this.charge>30&&G.t%3===0)spawnP(this.x+this.w/2+rnd(-14,14),this.y+this.h/2+rnd(-16,16),0,0,10,this.charge>75?'#aaf0ff':'#28e6ff',3,0,true);}
+      else if(this.charge>0){
+        if(this.charge>30){fireBuster(this,this.charge>75?2:1);this.shootT=18;}
+        this.charge=0;}
+    }
+    cycleWeapon();
+    /* move + collide */
+    this.x+=this.vx; this.collide(level,'x');
+    this.y+=this.vy; this.onG=false; this.collide(level,'y');
+    /* wall detect for slide */
+    if(!this.onG&&mv){
+      const probe={x:this.x+mv*2,y:this.y+4,w:this.w,h:this.h-8};
+      for(const pl of level.plats)if(aabb(probe,pl)){this.wall=mv;break;}
+      if(this.wall&&this.vy>2){this.vy=2;this.jumps=0;this.airDashUsed=false;
+        if(G.t%4===0)spawnP(this.x+(this.wall>0?this.w:0),this.y+this.h-6,0,rnd(1,2),12,'#cfd8ff',2);}
+    }
+    if(this.onG){this.jumps=0;this.airDashUsed=false;}
+    this.x=clamp(this.x,level.camMin||0,level.w-this.w);
+    if(this.y>level.h+60)this.hurt(99);
+    /* hazards */
+    for(const hz of level.hazards)if(aabb(this.box,hz))this.hurt(3);
+    /* pickups */
+    for(let i=level.items.length-1;i>=0;i--){const it=level.items[i];
+      if(aabb(this.box,it)){
+        if(it.type==='hp'){this.hp=Math.min(G.maxHP,this.hp+4);SFX.pickup();}
+        if(it.type==='tank'){if(!G.tanks[G.stage]){G.tanks[G.stage]=true;G.maxHP+=4;this.hp=G.maxHP;SFX.tank();
+          toast('LIFE CORE ACQUIRED — MAX ENERGY UP');}else{this.hp=Math.min(G.maxHP,this.hp+8);SFX.pickup();}}
+        if(it.type==='ammo'){for(const k in G.wEnergy)G.wEnergy[k]=Math.min(28,G.wEnergy[k]+10);SFX.pickup();}
+        if(it.type==='upg'){const u=UPGRADES[it.part];G.upgrades[it.part]=1;G.gotUpg[it.part]=true;
+          this.maxJumps=2+(G.upgrades.jump?1:0);SFX.tank();
+          toast(u.name+' INSTALLED — '+u.blurb);
+          burst(it.x+10,it.y+10,24,u.col,5,4);addShake(4);flash=8;flashCol=hexA(u.col,.2);}
+        burst(it.x+8,it.y+8,10,'#ffd24a',3);level.items.splice(i,1);}
+    }
+  }
+  collide(level,axis){
+    for(const pl of level.plats){
+      if(!aabb(this.box,pl))continue;
+      if(axis==='x'){ if(this.vx>0)this.x=pl.x-this.w; else if(this.vx<0)this.x=pl.x+pl.w; this.vx=0; }
+      else{ if(this.vy>0){this.y=pl.y-this.h;this.vy=0;this.onG=true;} else if(this.vy<0){this.y=pl.y+pl.h;this.vy=0;} }
+    }
+  }
+  draw(cam){
+    if(this.dead&&this.deadT>10)return;
+    if(this.inv>0&&Math.floor(this.inv/3)%2===0)CX.globalAlpha=.4;
+    const x=this.x-cam.x,y=this.y-cam.y,f=this.face,c=this.c;
+    /* weapon tint — equipping a weapon recolors the suit (MM11-style) */
+    const wpn=(G.weapon&&G.weapon!=='buster')?STAGES.find(s=>s.id===G.weapon):null;
+    const bodyA=wpn?mixHex(c.col,wpn.wcol,.4):c.col;
+    const bodyB=wpn?mixHex(c.col2,wpn.wcol,.45):c.col2;
+    const trim=wpn?wpn.wcol:c.col2;
+    const accent=wpn?wpn.wcol:c.col;
+    const wIdx=wpn?STAGES.indexOf(wpn):-1;
+    const run=this.onG&&Math.abs(this.vx)>0.5, ph=Math.sin(this.anim*.35), ph2=Math.sin(this.anim*.35+Math.PI);
+    const dash=this.dashT>0;
+    const idle=this.onG&&!run&&!dash;
+    /* idle breathing: slow vertical bob; blink occasionally */
+    const breathe=idle?Math.sin(this.anim*.06)*0.8:0;
+    const blink=idle&&(this.anim%150)<6;
+    CX.save();CX.translate(x+this.w/2,y+this.h);CX.scale(f*SPR_SCALE,SPR_SCALE);CX.translate(-this.w/2,-this.h); /* larger 16-bit sprite, anchored at feet */
+    if(dash)CX.transform(1,0,-0.18,1,4,0);
+    const bob=(run?Math.abs(ph)*1.5:0)+breathe;
+    /* legs — fuller run cycle with lift + stride */
+    CX.fillStyle=bodyB;
+    if(dash){CX.fillRect(-2,24,14,9);CX.fillRect(10,26,13,7);}
+    else if(!this.onG){ /* tucked when airborne, splay on the way down */
+      const fall=this.vy>2; CX.fillRect(2,22,8,fall?11:9);CX.fillRect(12,20+(fall?2:0),8,fall?10:8);}
+    else if(run){const lift=Math.max(0,ph)*4, lift2=Math.max(0,ph2)*4;
+      CX.fillRect(3+ph*4,24-lift,8,10-bob+lift);CX.fillRect(11-ph*4,24-lift2,8,10-bob+lift2);
+      /* trailing dust on stride peak */
+      if(Math.abs(ph)>.9&&G.t%4===0)spawnP(this.x+(f>0?0:this.w),this.y+this.h-2,-f*rnd(.5,1.5),rnd(-.5,0),12,'#9fb4d0',2,0,false);}
+    else{CX.fillRect(3,24,8,10);CX.fillRect(11,24,8,10);}
+    /* boots glow — brighter thruster flame when Thruster Core owned */
+    CX.fillStyle=accent;CX.fillRect(dash?-2:3,32,7,2);CX.fillRect(dash?16:12,32,7,2);
+    if(G.upgrades.jump&&!this.onG){CX.fillStyle='#ffe34a';CX.shadowColor='#ffe34a';CX.shadowBlur=8;
+      CX.fillRect(4,33,5,3+rnd(2));CX.fillRect(12,33,5,3+rnd(2));CX.shadowBlur=0;}
+    /* back arm — swings opposite to legs while running */
+    CX.fillStyle=bodyB;const bArm=run?ph2*2:0;CX.fillRect(1,12-bob+bArm,5,9);
+    /* torso */
+    const grd=CX.createLinearGradient(0,8,0,24);grd.addColorStop(0,bodyA);grd.addColorStop(1,bodyB);
+    CX.fillStyle=grd;CX.fillRect(3,10-bob,16,14);
+    CX.fillStyle=mixHex(bodyA,'#ffffff',.45);CX.fillRect(4,10-bob,10,1);
+    CX.fillStyle=mixHex(bodyB,'#000000',.35);CX.fillRect(17,11-bob,2,12);
+    CX.fillStyle='#0a0f1e';CX.fillRect(3,16-bob,16,3);
+    /* armor plating */
+    if(G.upgrades.armor){CX.fillStyle='#cfe8ff';CX.fillRect(1,9-bob,5,5);CX.fillRect(16,9-bob,5,5);
+      CX.fillStyle='#9fdcff';CX.fillRect(2,10-bob,3,2);CX.fillRect(17,10-bob,3,2);}
+    /* chest gem — pulses with breathing, tinted by equipped weapon */
+    CX.fillStyle=wpn?wpn.wcol:(G.upgrades.arm?'#ffd24a':'#fff');
+    if(idle){CX.shadowColor=wpn?wpn.wcol:(G.upgrades.arm?'#ffd24a':c.col);CX.shadowBlur=3+Math.sin(this.anim*.06)*2;}
+    CX.fillRect(9,12-bob,4,3);CX.shadowBlur=0;
+    /* weapon module on shoulder — small body change per weapon (MM11-style) */
+    if(wpn){CX.fillStyle=accent;CX.shadowColor=accent;CX.shadowBlur=5;const sy=8-bob,k=wIdx;
+      if(k===0){CX.fillRect(13,sy,8,4);}                                                   /* magma vent */
+      else if(k===1){CX.beginPath();CX.moveTo(12,sy+4);CX.lineTo(21,sy-1);CX.lineTo(21,sy+4);CX.closePath();CX.fill();} /* cryo shard */
+      else if(k===2){CX.fillRect(14,sy,6,3);CX.fillRect(18,sy-3,2,6);}                      /* storm antenna */
+      else if(k===3){CX.beginPath();CX.arc(17,sy+2,3.4,0,TAU);CX.fill();}                   /* bio pod */
+      else if(k===4){CX.fillRect(13,sy,8,5);CX.fillStyle='#fff';CX.fillRect(15,sy+1,4,1);}  /* abyss intake */
+      else if(k===5){CX.beginPath();CX.moveTo(13,sy+4);CX.lineTo(17,sy-3);CX.lineTo(21,sy+4);CX.closePath();CX.fill();} /* shadow spike */
+      else if(k===6){CX.fillRect(13,sy,9,4);CX.fillStyle='#1a2540';CX.fillRect(15,sy+1,2,2);CX.fillRect(18,sy+1,2,2);}   /* metal bolts */
+      else {CX.fillRect(13,sy-1,8,5);CX.fillRect(16,sy-3,2,2);}                             /* sand drum */
+      CX.shadowBlur=0;}
+    /* front arm / buster or blade */
+    const muz=this.muzT>0;
+    if(c.melee){
+      CX.fillStyle=bodyB;CX.fillRect(15,12-bob,7,7);
+      if(this.slashT>0){const sw=this.slashT/14;
+        CX.save();CX.translate(22,15-bob);CX.rotate(lerp(1.4,-1.2,1-sw)*(this.combo===1?-1:1));
+        const bg=CX.createLinearGradient(0,0,30,0);bg.addColorStop(0,'#fff');bg.addColorStop(1,this.muzCol||c.col);
+        CX.shadowColor=this.muzCol||c.col;CX.shadowBlur=14;CX.fillStyle=bg;
+        CX.beginPath();CX.moveTo(0,-2);CX.lineTo(32,-1);CX.lineTo(34,0);CX.lineTo(32,1);CX.lineTo(0,3);CX.closePath();CX.fill();
+        CX.shadowBlur=0;CX.restore();}
+      else{CX.fillStyle='#cfd8ff';CX.fillRect(20,13-bob,5,4);}
+    }else{
+      const shooting=this.shootT>0||Keys.F;
+      CX.fillStyle=bodyB;
+      if(shooting||muz){CX.fillRect(15,13-bob,10,8);CX.fillStyle='#1a2540';CX.fillRect(23,14-bob,5,6);
+        CX.fillStyle=this.charge>75?'#aaf0ff':this.charge>30?c.col:'#243150';CX.fillRect(26,15-bob,3,4);}
+      else CX.fillRect(15,13-bob,7,9);
+      /* weapon-specific muzzle flash */
+      if(muz){const mt=this.muzT/12, mc=this.muzCol||'#9ff3ff', big=this.muzBig;
+        CX.save();CX.translate(29,16-bob);CX.shadowColor=mc;CX.shadowBlur=14;CX.fillStyle=mc;
+        const r=(big?7:4)*mt+3;
+        CX.beginPath();for(let k=0;k<8;k++){const a=k/8*TAU,rr=k%2?r:r*0.45;
+          (k?CX.lineTo:CX.moveTo).call(CX,Math.cos(a)*rr,Math.sin(a)*rr);}CX.closePath();CX.fill();
+        CX.fillStyle='#fff';CX.beginPath();CX.arc(0,0,r*0.4,0,TAU);CX.fill();
+        CX.shadowBlur=0;CX.restore();}
+    }
+    /* hair / scarf streaming behind the head (16-bit secondary motion) */
+    {const sway=run?ph*1.5:dash?3:!this.onG?-1.5:Math.sin(this.anim*.08)*.8;
+     const hc=c.hair||'#dff7ff', hd=mixHex(hc,'#000000',.35);
+     if(c.melee){CX.fillStyle=hd;CX.fillRect(-3-sway,1-bob,6,4);CX.fillRect(-6-sway*1.6,4-bob,5,4);CX.fillRect(-8-sway*2,7-bob,4,3);
+       CX.fillStyle=hc;CX.fillRect(-2-sway,0-bob,6,3);CX.fillRect(-5-sway*1.6,3-bob,5,2);CX.fillRect(-7-sway*2,6-bob,3,2);}
+     else{CX.fillStyle=trim;CX.fillRect(-2-sway,6-bob,6,3);CX.fillRect(-6-sway*1.8,7-bob,5,2);}}
+    /* head */
+    CX.fillStyle=grd;CX.fillRect(4,-2-bob,14,12);
+    CX.fillStyle=mixHex(bodyA,'#ffffff',.5);CX.fillRect(5,-1-bob,7,1);CX.fillRect(4,0-bob,1,5);   /* rim light */
+    CX.fillStyle=mixHex(bodyB,'#000000',.3);CX.fillRect(4,8-bob,14,2);                          /* jaw shade */
+    CX.fillStyle=trim;CX.fillRect(4,-2-bob,14,3); /* helmet crest */
+    CX.fillStyle='#e8f6ff';CX.fillRect(16,-4-bob,4,8); /* fin */
+    /* visor (blinks when idle) */
+    CX.fillStyle='#0a0f1e';CX.fillRect(8,3-bob,11,5);
+    if(!blink){CX.fillStyle=c.col;CX.shadowColor=c.col;CX.shadowBlur=6;CX.fillRect(11,4-bob,7,3);CX.shadowBlur=0;}
+    else{CX.fillStyle=c.col2;CX.fillRect(11,5-bob,7,1);}
+    CX.restore();
+    if(this.muzT>0)this.muzT--;
+    /* charge aura */
+    if(this.charge>30){CX.strokeStyle=this.charge>75?'#aaf0ff':c.col;CX.globalAlpha=.5+Math.sin(G.t*.5)*.3;
+      CX.lineWidth=2;CX.beginPath();CX.arc(x+this.w/2,y+this.h/2,24+Math.sin(G.t*.6)*4,0,TAU);CX.stroke();CX.globalAlpha=1;
+      if(this.charge>75){CX.strokeStyle='#fff';CX.globalAlpha=.3;CX.beginPath();CX.arc(x+this.w/2,y+this.h/2,30+Math.sin(G.t*.4)*5,0,TAU);CX.stroke();CX.globalAlpha=1;}}
+    CX.globalAlpha=1;
+  }
+}
+function cycleWeapon(){
+  const wl=tap('W

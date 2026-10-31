@@ -1,0 +1,200 @@
+   CX.fillStyle=s.platEdge;CX.fillRect(px+6,py+62,cw-12,2);
+    CX.save();CX.translate(px+cw/2,py+36);CX.scale(.56,.56);CX.translate(-28,-32);
+    Boss.prototype['draw'+s.id.charAt(0).toUpperCase()+s.id.slice(1)].call({t:G.t,sid:s.id,blink:0});
+    CX.restore();
+    if(done){CX.fillStyle='rgba(3,4,12,.62)';CX.fillRect(px+6,py+6,cw-12,68);
+      CX.font='900 15px Orbitron';CX.fillStyle='#5dff7a';CX.fillText('NEUTRALIZED',px+cw/2,py+44);}
+    CX.font='700 13px Orbitron';CX.fillStyle=sel?'#fff':'#9fb4ff';CX.fillText(s.name,px+cw/2,py+92);
+    CX.font='600 11px Rajdhani';CX.fillStyle=s.wcol;CX.fillText(s.boss+(done?' ✓':''),px+cw/2,py+108);
+    if(sel&&!done){CX.font='600 10px Rajdhani';CX.fillStyle='#7a87b8';
+      const wk=STAGES.find(st=>st.id===WEAK[s.id]);
+      CX.fillText('weak: '+(G.beaten[WEAK[s.id]]?wk.weapon:'???'),px+cw/2,py+122);}
+  }
+  /* hunter status strip */
+  CX.font='600 12px Rajdhani';CX.fillStyle='#9fb4ff';
+  const armCount=Object.values(G.upgrades).filter(Boolean).length;
+  CX.fillText(CHARS[G.char].name+'   |   MAX ENERGY '+G.maxHP+'   |   ARMOR '+armCount+'/4   |   CORES '+beatCount+'/8',W/2,512);
+  CX.font='600 10px Rajdhani';CX.fillStyle='#5b6aa0';
+  CX.fillText('↑↓←→ choose target · ENTER deploy · each citadel hides one armor part on a high ledge',W/2,530);
+  CX.textAlign='left';
+  if(tap('OK')){
+    const si=order[G.selIdx];
+    if(si===-1){if(allBeaten){SFX.sel();stopSong();startStage('core');}else SFX.blip();}
+    else{SFX.sel();stopSong();startStage(STAGES[si].id);}
+  }
+}
+/* weapon-get ceremony */
+function drawGetWeapon(){
+  G.gwT=(G.gwT||0)+1;
+  const s=STAGES.find(st=>st.id===G.stage);
+  CX.fillStyle='#03040a';CX.fillRect(0,0,W,H);
+  for(let i=0;i<30;i++){const a=G.gwT*.02+i*TAU/30;
+    CX.strokeStyle=hexA(s.wcol,.12);CX.beginPath();CX.moveTo(W/2,H/2);
+    CX.lineTo(W/2+Math.cos(a)*700,H/2+Math.sin(a)*700);CX.stroke();}
+  if(G.gwT%3===0)burst(W/2+rnd(-60,60),H/2+rnd(-60,60),2,s.wcol,2,2);
+  CX.textAlign='center';
+  const pop=Math.min(1,G.gwT/25);
+  CX.save();CX.translate(W/2,H/2-40);CX.scale(pop*1.6,pop*1.6);CX.translate(-28,-28);
+  CX.globalAlpha=pop;
+  Boss.prototype['draw'+s.id.charAt(0).toUpperCase()+s.id.slice(1)].call({t:G.t,sid:s.id});
+  CX.restore();CX.globalAlpha=1;
+  if(G.gwT>30){
+    CX.font='900 26px Orbitron';CX.fillStyle='#fff';CX.fillText(s.boss+'  NEUTRALIZED',W/2,330);}
+  if(G.gwT>60){
+    CX.font='900 34px Orbitron';CX.fillStyle=s.wcol;CX.shadowColor=s.wcol;CX.shadowBlur=22;
+    CX.fillText('GOT  '+s.weapon,W/2,390);CX.shadowBlur=0;
+    CX.font='600 15px Rajdhani';CX.fillStyle='#b9c6f0';
+    const flavor={magma:'A crawling wave of plasma fire.',cryo:'A triple fan of razor ice.',
+      storm:'A piercing thunder lance.',bio:'Orbiting thorn satellites.',
+      abyss:'A heavy, arcing tidal surge.',shadow:'Twin phasing shade bolts.',
+      metal:'A spread of bouncing rivets.',sand:'A ground-splitting quake driver.'}[s.id];
+    const victim=STAGES.find(st=>WEAK[st.id]===s.id);
+    const tips=flavor+(victim?'  '+victim.boss+' fears it.':'');
+    CX.fillText(tips,W/2,422);}
+  if(G.gwT>90&&Math.floor(G.t/25)%2===0){CX.font='700 14px Orbitron';CX.fillStyle='#9fb4ff';CX.fillText('ENTER',W/2,480);}
+  CX.textAlign='left';
+  if(G.gwT>90&&tap('OK')){SFX.sel();G.state='STAGESEL';G.weapon='buster';playSong('select');}
+}
+/* endings */
+function endingLines(){
+  const c=CHARS[G.char], all=STAGES.every(s=>G.beaten[s.id]); /* always true at core */
+  const cores=Object.keys(G.tanks).length, full=cores>=4;
+  const perfect=G.noDamageFinal;
+  const L=[];
+  L.push('THE CORE COLLAPSES. DAWN BREAKS OVER THE CONTINENT.','');
+  if(G.char==='VOLT'){
+    L.push('VOLT-7 stands in the ruins of the orbital mind.',
+      'In its dying light he sees the lab again — and lets it go.',
+      'A prototype no longer. A guardian by choice.');
+    if(full)L.push('','With every life core recovered, the citadels reignite as','sanctuaries. The hunters\' war is finally over.   — TRUE ENDING');
+    else L.push('','Somewhere beneath the rubble, lost cores still pulse.','The war sleeps. It does not end.   — STANDARD ENDING');
+  }else{
+    L.push('ASH REQUIEM sheathes a blade that no longer serves war.',
+      'Built to end things, she chooses instead to begin them:',
+      'a school for broken machines, in the Bio Gardens\' shade.');
+    if(full)L.push('','Every recovered core becomes a heart for a new frame.','Her answer, at last: she is for the living.   — TRUE ENDING');
+    else L.push('','But some cores were left behind, and some questions too.','She will walk the continent until both are found.   — STANDARD ENDING');
+  }
+  if(perfect)L.push('','FLAWLESS PROTOCOL — the Nexus never touched you.');
+  L.push('','DEATHS: '+G.deaths+'      LIFE CORES: '+cores+' / 4');
+  return L;
+}
+function drawEnding(){
+  G.endT++;
+  const c=CHARS[G.char];
+  /* sky sunrise */
+  const g=CX.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#0a1030');g.addColorStop(.5,'#3a2c66');g.addColorStop(.8,'#c9612e');g.addColorStop(1,'#ffd24a');
+  CX.fillStyle=g;CX.fillRect(0,0,W,H);
+  CX.fillStyle='rgba(255,210,74,.9)';CX.shadowColor='#ffd24a';CX.shadowBlur=60;
+  CX.beginPath();CX.arc(W/2,H-40,70+Math.sin(G.endT*.02)*4,Math.PI,0);CX.fill();CX.shadowBlur=0;
+  CX.fillStyle='rgba(5,6,14,.9)';CX.fillRect(0,H-60,W,60);
+  /* fireworks */
+  if(G.endT%34===0){const fx=rnd(100,W-100),fy=rnd(60,240);
+    burst(fx,fy,26,[c.col,'#ffd24a','#fff','#ff7a2e'][irnd(0,3)],4,3,.05);tone(rnd(600,1100),.2,'triangle',.04,-300);}
+  /* hunter silhouette */
+  drawCharPortrait(G.char,W/2,H-130,1.2,true);
+  const L=endingLines();
+  CX.textAlign='center';
+  const lines=Math.min(L.length,Math.floor(G.endT/34));
+  for(let i=0;i<lines;i++){
+    const a=clamp((G.endT-i*34)/26,0,1);CX.globalAlpha=a;
+    const txt=L[i];
+    CX.font=txt.includes('ENDING')||txt.includes('FLAWLESS')?'700 17px Orbitron':'600 18px Rajdhani';
+    CX.fillStyle=txt.includes('TRUE')?'#5dff7a':txt.includes('STANDARD')?'#9fb4ff':txt.includes('FLAWLESS')?'#ffd24a':'#f0f4ff';
+    CX.fillText(txt,W/2,80+i*27);}
+  CX.globalAlpha=1;
+  if(G.endT>L.length*34+60){
+    CX.font='900 22px Orbitron';CX.fillStyle='#fff';CX.shadowColor=c.col;CX.shadowBlur=14;
+    CX.fillText('AXIOM PROTOCOL — COMPLETE',W/2,52);CX.shadowBlur=0;
+    if(Math.floor(G.t/30)%2===0){CX.font='700 13px Orbitron';CX.fillStyle='#9fb4ff';CX.fillText('ENTER — NEW GAME',W/2,H-18);}
+    if(tap('OK')){stopSong();G=freshGame();parts=[];playSong('title');}
+  }
+  CX.textAlign='left';
+}
+/* pause */
+let paused=false;
+function drawPause(){
+  CX.fillStyle='rgba(3,4,10,.7)';CX.fillRect(0,0,W,H);
+  CX.textAlign='center';
+  CX.font='900 30px Orbitron';CX.fillStyle='#fff';CX.fillText('PAUSED',W/2,200);
+  CX.font='600 15px Rajdhani';CX.fillStyle='#9fb4ff';
+  CX.fillText('A / S — cycle weapons     ENTER — resume     ESC — abandon mission',W/2,250);
+  const owned=['buster',...STAGES.filter(s=>G.beaten[s.id]).map(s=>s.id)];
+  const slot=Math.min(118,Math.floor((W-60)/owned.length)), bw=slot-10;
+  const totalW=owned.length*slot;
+  owned.forEach((wid,i)=>{
+    const x=W/2-totalW/2+i*slot+slot/2;
+    const sdef=STAGES.find(s=>s.id===wid);
+    const sel=G.weapon===wid;
+    CX.fillStyle=sel?'rgba(12,18,44,.95)':'rgba(8,10,24,.8)';
+    CX.strokeStyle=sel?(sdef?sdef.wcol:'#28e6ff'):'#26305a';CX.lineWidth=sel?2:1;
+    CX.fillRect(x-bw/2,290,bw,70);CX.strokeRect(x-bw/2,290,bw,70);
+    /* tiny weapon swatch */
+    CX.fillStyle=sdef?sdef.wcol:'#28e6ff';CX.shadowColor=CX.fillStyle;CX.shadowBlur=sel?8:0;
+    CX.fillRect(x-6,300,12,8);CX.shadowBlur=0;
+    CX.font='700 10px Orbitron';CX.fillStyle=sel?'#fff':'#7a87b8';
+    CX.fillText(sdef?sdef.weapon:(CHARS[G.char].melee?'P.EDGE':'BUSTER'),x,328);
+    if(sdef){CX.font='600 10px Rajdhani';CX.fillStyle=sdef.wcol;CX.fillText((G.wEnergy[wid]|0)+'/28',x,346);}
+  });
+  CX.textAlign='left';
+}
+
+/* ---------- play update ---------- */
+function updatePlay(){
+  const level=curLevel;
+  if(tap('ESC')){
+    if(paused){paused=false;stopSong();G.state='STAGESEL';playSong('select');return;}
+    paused=true;SFX.blip();
+  }
+  if(tap('OK')){paused=!paused;SFX.blip();}
+  if(paused){cycleWeapon();return;}
+  player.update(level);
+  /* camera */
+  if(!level.bossStarted){
+    cam.x=clamp(player.x-W/2+player.w/2,0,level.w-W);
+    if(player.x>level.door+30){
+      level.bossStarted=true;level.camMin=level.arena.x;
+      SFX.door();stopSong();
+      boss=new Boss(G.stage,{x:level.arena.x,y:0,w:level.arena.w,h:H});
+      enemies=[];eshots=[];
+    }
+  }else cam.x=lerp(cam.x,level.arena.x+level.arena.w/2-W/2,.08),cam.x=clamp(cam.x,0,level.w-W);
+  cam.y=0;
+  /* enemies */
+  for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];
+    if(Math.abs(e.x-player.x)<W*1.2)e.update(level);
+    if(e.dead)enemies.splice(i,1);}
+  /* player shots vs enemies */
+  for(let i=shots.length-1;i>=0;i--){const s=shots[i];let used=false;
+    for(const e of enemies)if(!e.dead&&aabb(s,e.box)){e.hurt(s.dmg);if(!s.pierce&&s.type!=='thorn'&&s.type!=='magma')used=true;break;}
+    if(boss&&boss.active&&!boss.dead&&aabb(s,boss.box)){
+      boss.hurt(s.dmg,({magma:'magma',frost:'cryo',lance:'storm',thorn:'bio',tide:'abyss',shade:'shadow',rivet:'metal',quake:'sand'})[s.type]||'buster');
+      if(!s.pierce&&s.type!=='thorn')used=true;}
+    if(used){burst(s.x+s.w/2,s.y+s.h/2,5,s.col,2);shots.splice(i,1);}}
+  updateShots(level);
+  updateEshotSpecials(level);
+  if(boss)boss.update(level);
+  updateParts();
+}
+function drawShadowFor(e){
+  /* find nearest platform top below the actor for a contact shadow */
+  let gy=null;
+  for(const pl of curLevel.plats){
+    if(e.x+e.w>pl.x&&e.x<pl.x+pl.w&&pl.y>=e.y+e.h-4&&(gy===null||pl.y<gy))gy=pl.y;
+  }
+  if(gy===null||gy-(e.y+e.h)>180)return;
+  const dist=clamp(gy-(e.y+e.h),0,180), sc=1-dist/240;
+  CX.globalAlpha=0.32*sc;CX.fillStyle='#000';
+  CX.beginPath();CX.ellipse(e.x+e.w/2-cam.x,gy-cam.y+2,e.w*0.55*sc,5*sc,0,0,TAU);CX.fill();
+  CX.globalAlpha=1;
+}
+function drawPlay(){
+  const camX0=cam.x; cam.x=Math.round(cam.x/PX)*PX;   /* pixel-locked camera */
+  drawBG(curLevel.def,cam.x);
+  drawLevel(curLevel);
+  if(!player.dead)drawShadowFor(player);
+  for(const e of enemies)drawShadowFor(e);
+  beginActors();
+  for(const e of enemies)e.draw(cam);
+  if(boss)boss.dra

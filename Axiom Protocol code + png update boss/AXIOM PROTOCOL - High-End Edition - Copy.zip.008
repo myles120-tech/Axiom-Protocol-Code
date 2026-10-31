@@ -1,0 +1,188 @@
+llipse(28,22,12,14,0,0,TAU);CX.fill();
+    CX.fillStyle='#0a3a18';CX.fillRect(21,18,6,7);CX.fillRect(31,18,6,7);
+    CX.fillStyle='#5dff7a';CX.shadowColor='#5dff7a';CX.shadowBlur=8;CX.fillRect(23,20,3,3);CX.fillRect(33,20,3,3);CX.shadowBlur=0;
+    /* bloom crown */
+    CX.fillStyle='#ff7ab8';for(let i=0;i<5;i++){const a=-Math.PI/2+(i-2)*.5;
+      CX.beginPath();CX.ellipse(28+Math.cos(a)*16,2+Math.sin(a)*10,6,3,a,0,TAU);CX.fill();}
+  }
+  drawAbyss(){  /* serpentine leviathan */
+    const t=this.t;CX.shadowColor='#3ad0ff';CX.shadowBlur=14;
+    /* trailing body segments */
+    for(let i=6;i>=1;i--){const sx=28-Math.sin(t*.08+i*.5)*i*3, sy=44+i*4+Math.cos(t*.08+i*.4)*4, r=12-i;
+      CX.fillStyle=i%2?'#0a4a6e':'#0d5f8c';CX.beginPath();CX.arc(sx,sy,r,0,TAU);CX.fill();}
+    /* head */
+    const g=CX.createLinearGradient(0,0,0,50);g.addColorStop(0,'#7fe0ff');g.addColorStop(1,'#0a4a6e');
+    CX.fillStyle=g;CX.beginPath();CX.moveTo(2,30);CX.quadraticCurveTo(10,2,30,6);CX.quadraticCurveTo(54,12,52,34);
+    CX.quadraticCurveTo(40,50,20,46);CX.quadraticCurveTo(4,44,2,30);CX.fill();CX.shadowBlur=0;
+    /* fins */
+    CX.fillStyle='#2aa8ff';CX.beginPath();CX.moveTo(26,2);CX.lineTo(34,-12);CX.lineTo(40,4);CX.closePath();CX.fill();
+    CX.beginPath();CX.moveTo(46,18);CX.lineTo(64,14);CX.lineTo(52,30);CX.closePath();CX.fill();
+    /* jaw + teeth */
+    CX.fillStyle='#063048';CX.fillRect(6,34,30,8);
+    CX.fillStyle='#eafaff';for(let i=0;i<6;i++)CX.fillRect(8+i*5,34,2,4);
+    /* eye */
+    CX.fillStyle='#fff';CX.shadowColor='#3ad0ff';CX.shadowBlur=10;CX.beginPath();CX.arc(36,20,5,0,TAU);CX.fill();
+    CX.fillStyle='#03283a';CX.beginPath();CX.arc(37,20,2.5,0,TAU);CX.fill();CX.shadowBlur=0;
+  }
+  drawShadow(){  /* phantom — afterimages when blinking */
+    const t=this.t, blinking=this.blink>0;
+    if(blinking){CX.globalAlpha=.35;}
+    /* cloak */
+    const g=CX.createLinearGradient(0,0,0,64);g.addColorStop(0,'#b98aff');g.addColorStop(.5,'#5a2a99');g.addColorStop(1,'#160a28');
+    CX.shadowColor='#a36aff';CX.shadowBlur=blinking?4:14;
+    CX.fillStyle=g;CX.beginPath();CX.moveTo(28,-2);CX.lineTo(48,16);CX.lineTo(44,60);
+    CX.quadraticCurveTo(28,52,12,60);CX.lineTo(8,16);CX.closePath();CX.fill();CX.shadowBlur=0;
+    /* tattered hem */
+    CX.fillStyle='#2a1248';for(let i=0;i<5;i++)CX.beginPath(),CX.moveTo(10+i*7,58),CX.lineTo(13+i*7,68),CX.lineTo(17+i*7,58),CX.fill();
+    /* hood void */
+    CX.fillStyle='#0a0418';CX.beginPath();CX.ellipse(28,16,12,13,0,0,TAU);CX.fill();
+    /* eyes */
+    CX.fillStyle='#d8b3ff';CX.shadowColor='#d8b3ff';CX.shadowBlur=10;
+    CX.fillRect(21,14,5,3);CX.fillRect(30,14,5,3);CX.shadowBlur=0;
+    /* shoulder spikes */
+    CX.fillStyle='#a36aff';CX.beginPath();CX.moveTo(8,18);CX.lineTo(-2,8);CX.lineTo(10,12);CX.fill();
+    CX.beginPath();CX.moveTo(48,18);CX.lineTo(58,8);CX.lineTo(46,12);CX.fill();
+    CX.globalAlpha=1;
+  }
+  drawMetal(){  /* scrap titan — bulky industrial */
+    const t=this.t;
+    /* legs */
+    CX.fillStyle='#3a4250';CX.fillRect(6,46,16,18);CX.fillRect(40,46,16,18);
+    CX.fillStyle='#23262f';CX.fillRect(4,60,20,5);CX.fillRect(38,60,20,5);
+    /* torso slab */
+    const g=CX.createLinearGradient(0,0,0,52);g.addColorStop(0,'#e6ecf6');g.addColorStop(.5,'#8a93a6');g.addColorStop(1,'#3c4250');
+    CX.fillStyle=g;CX.fillRect(2,8,60,42);
+    /* rivets */
+    CX.fillStyle='#5a6478';for(let rx=8;rx<60;rx+=12)for(let ry=14;ry<46;ry+=12)CX.fillRect(rx,ry,3,3);
+    /* shoulder pistons */
+    CX.fillStyle='#6a7488';CX.fillRect(-6,10,12,16);CX.fillRect(58,10,12,16);
+    CX.fillStyle='#c9d2e0';CX.fillRect(-4,12,8,5);CX.fillRect(60,12,8,5);
+    /* head visor */
+    CX.fillStyle='#1a1d24';CX.fillRect(18,12,28,12);
+    CX.fillStyle='#ff5d5d';CX.shadowColor='#ff5d5d';CX.shadowBlur=10;
+    const eye=Math.sin(t*.12)>0?'#ff5d5d':'#ffb0b0';CX.fillStyle=eye;
+    CX.fillRect(22,16,8,4);CX.fillRect(34,16,8,4);CX.shadowBlur=0;
+    /* hazard stripe */
+    CX.fillStyle='#f0c020';for(let i=0;i<6;i++)CX.fillRect(6+i*10,40,5,4);
+  }
+  drawSand(){  /* seismic nomad — armored desert brute */
+    const t=this.t;
+    /* drill arms */
+    CX.fillStyle='#8a5a28';CX.save();CX.translate(50,30);CX.rotate(t*.3);
+    CX.fillStyle='#c89a5a';CX.beginPath();CX.moveTo(0,-6);CX.lineTo(22,0);CX.lineTo(0,6);CX.fill();CX.restore();
+    /* legs */
+    CX.fillStyle='#4a2c12';CX.fillRect(6,46,16,18);CX.fillRect(36,46,16,18);
+    /* body */
+    const g=CX.createLinearGradient(0,0,0,52);g.addColorStop(0,'#f0c888');g.addColorStop(.5,'#a06a30');g.addColorStop(1,'#4a2c12');
+    CX.fillStyle=g;CX.beginPath();CX.moveTo(4,46);CX.lineTo(10,10);CX.lineTo(28,2);CX.lineTo(48,12);CX.lineTo(52,46);CX.closePath();CX.fill();
+    /* rock plating cracks */
+    CX.strokeStyle='#5a3818';CX.lineWidth=2;CX.beginPath();
+    CX.moveTo(16,14);CX.lineTo(20,40);CX.moveTo(36,12);CX.lineTo(34,42);CX.moveTo(10,28);CX.lineTo(50,30);CX.stroke();
+    /* glowing core */
+    CX.fillStyle='#ffd24a';CX.shadowColor='#ffb030';CX.shadowBlur=12;
+    CX.beginPath();CX.arc(28,30,5+Math.sin(t*.1)*1.5,0,TAU);CX.fill();CX.shadowBlur=0;
+    /* eyes */
+    CX.fillStyle='#1a0e04';CX.fillRect(18,16,8,5);CX.fillRect(30,16,8,5);
+    CX.fillStyle='#ffe9b0';CX.fillRect(20,17,3,3);CX.fillRect(32,17,3,3);
+    /* horns */
+    CX.fillStyle='#c89a5a';CX.beginPath();CX.moveTo(12,8);CX.lineTo(6,-6);CX.lineTo(18,4);CX.fill();
+    CX.beginPath();CX.moveTo(44,8);CX.lineTo(50,-6);CX.lineTo(38,4);CX.fill();
+  }
+  drawCore(){
+    const mc=this.mc||CHARS[G.char]||CHARS.VOLT;
+    const t=this.t||0, anim=this.anim||0;
+    const run=this.onG&&Math.abs(this.vx||0)>0.5, ph=Math.sin(anim*.35), ph2=Math.sin(anim*.35+Math.PI);
+    const dash=(this.dashT||0)>0, charging=(this.charge||0)>30;
+    const bob=(run?Math.abs(ph)*1.5:0)+Math.sin(t*.06)*0.8;
+    const dark='#150a22', rim=mc.col;
+    CX.save();CX.scale(1.18,1.2);
+    /* dark drifting after-image */
+    CX.globalAlpha=.25;CX.fillStyle='#d24aff';CX.fillRect(3-(this.face||1)*3,10,16,16);CX.globalAlpha=1;
+    /* legs */
+    CX.fillStyle='#0d0716';
+    if(dash){CX.fillRect(-2,24,14,9);CX.fillRect(10,26,13,7);}
+    else if(!this.onG&&this.onG!==undefined){CX.fillRect(2,22,8,10);CX.fillRect(12,20,8,9);}
+    else if(run){const l=Math.max(0,ph)*4,l2=Math.max(0,ph2)*4;
+      CX.fillRect(3+ph*4,24-l,8,10+l);CX.fillRect(11-ph*4,24-l2,8,10+l2);}
+    else{CX.fillRect(3,24,8,10);CX.fillRect(11,24,8,10);}
+    /* boot glitch glow */
+    CX.fillStyle='#ff2e88';CX.shadowColor='#ff2e88';CX.shadowBlur=5;CX.fillRect(dash?-2:3,32,7,2);CX.fillRect(dash?16:12,32,7,2);CX.shadowBlur=0;
+    /* back arm */
+    CX.fillStyle=dark;CX.fillRect(1,12-bob+(run?ph2*2:0),5,9);
+    /* torso */
+    const g=CX.createLinearGradient(0,8,0,24);g.addColorStop(0,'#2a1240');g.addColorStop(1,'#0a0612');
+    CX.fillStyle=g;CX.fillRect(3,10-bob,16,14);
+    CX.fillStyle=rim;CX.globalAlpha=.6;CX.fillRect(3,15-bob,16,2);CX.globalAlpha=1; /* glowing seam */
+    /* corrupted chest core */
+    CX.fillStyle='#ff2e88';CX.shadowColor='#ff2e88';CX.shadowBlur=8+Math.sin(t*.2)*3;CX.fillRect(9,12-bob,4,4);CX.shadowBlur=0;
+    /* front arm: blade for ASH-mirror, buster for VOLT-mirror */
+    if(mc.melee){CX.fillStyle=dark;CX.fillRect(15,12-bob,7,7);
+      CX.fillStyle='#d24aff';CX.shadowColor='#d24aff';CX.shadowBlur=10;CX.fillRect(20,11-bob,9,3);CX.shadowBlur=0;}
+    else{CX.fillStyle=dark;CX.fillRect(15,13-bob,10,8);CX.fillStyle='#1a0e26';CX.fillRect(23,14-bob,5,6);
+      CX.fillStyle=charging?'#ff2e88':rim;CX.shadowColor=charging?'#ff2e88':rim;CX.shadowBlur=charging?10:4;
+      CX.fillRect(26,15-bob,3,4);CX.shadowBlur=0;}
+    /* head */
+    CX.fillStyle=g;CX.fillRect(4,-2-bob,14,12);
+    CX.fillStyle=dark;CX.fillRect(4,-2-bob,14,3);
+    CX.fillStyle=rim;CX.fillRect(16,-4-bob,4,8); /* fin */
+    /* glowing twin-slit visor (menacing) */
+    CX.fillStyle='#0a0612';CX.fillRect(8,3-bob,11,5);
+    CX.fillStyle='#ff2e88';CX.shadowColor='#ff2e88';CX.shadowBlur=9;
+    CX.fillRect(9,4-bob,4,2);CX.fillRect(15,4-bob,4,2);CX.shadowBlur=0;
+    CX.restore();
+    /* charge / void aura */
+    if(charging){CX.strokeStyle='#ff2e88';CX.globalAlpha=.5+Math.sin(t*.5)*.3;CX.lineWidth=2;
+      CX.beginPath();CX.arc(13,21,26+Math.sin(t*.6)*5,0,TAU);CX.stroke();CX.globalAlpha=1;}
+  }
+}
+
+/* ---------- level generation ---------- */
+let curLevel=null, cam={x:0,y:0};
+function makeLevel(stageId){
+  const isFinal=stageId==='core';
+  const def=isFinal?FINAL:STAGES.find(s=>s.id===stageId);
+  const Wl=isFinal?5200:7000, Hl=H;
+  const R=sRand({magma:7,cryo:13,storm:29,bio:41,core:97}[stageId]);
+  const plats=[], hazards=[], items=[], spawns=[];
+  /* floor with gaps */
+  let x=0;
+  while(x<Wl-900){
+    const seg=300+R()*420|0;
+    plats.push({x,y:H-48,w:seg,h:80});
+    const gap=70+R()*90|0;
+    if(x>500)hazards.push({x:x+seg+6,y:H-14,w:gap-12,h:20,type:'pit'});
+    x+=seg+gap;
+  }
+  plats.push({x:Wl-980,y:H-48,w:980,h:80}); /* arena floor */
+  /* floating platforms + decor structure — count scales with length */
+  const nFloat=Math.max(14,Math.round((Wl-1500)/300));
+  for(let i=0;i<nFloat;i++){
+    const px=350+i*((Wl-1500)/nFloat)+R()*120;
+    const py=H-130-R()*200;
+    plats.push({x:px,y:py,w:90+R()*120|0,h:18});
+  }
+  /* walls for wall-jump moments */
+  const nWall=Math.max(3,Math.round(Wl/1400));
+  for(let i=0;i<nWall;i++){
+    const wx=900+i*((Wl-1500)/nWall)+R()*200;
+    plats.push({x:wx,y:H-260,w:26,h:212});
+  }
+  /* spikes on some floor segments */
+  const nSpike=Math.max(5,Math.round(Wl/760));
+  for(let i=0;i<nSpike;i++){
+    const sx=700+i*((Wl-1400)/nSpike)+R()*160;
+    hazards.push({x:sx,y:H-62,w:80,h:14,type:'spike'});
+  }
+  /* enemies — weighted lists, fliers now rare (at most one per stage) */
+  const types={
+    magma:['walker','hopper','turret','walker','hopper'],
+    cryo :['walker','turret','walker','hopper','flier'],
+    storm:['hopper','turret','walker','hopper','flier'],
+    bio  :['hopper','walker','walker','turret','hopper'],
+    abyss:['walker','turret','hopper','flier','walker'],
+    shadow:['hopper','orb','walker','turret','hopper'],
+    metal:['walker','turret','walker','hopper','turret'],
+    sand :['hopper','walker','turret','walker','hopper'],
+    core :['orb','turret','walker','orb','turret'],
+  }[stageId];
+  const count=isFinal?15:Math.max(13

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>AXIOM PROTOCOL</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;600;700&family=Press+Start+2P&display=swap');
+  :root{ --cyan:#28e6ff; --mag:#ff2e88; --gold:#ffd24a; --bg:#05060e; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:var(--bg);overflow:hidden;font-family:'Rajdhani',sans-serif}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:
+    radial-gradient(1200px 700px at 50% 40%, #0b1030 0%, #05060e 70%);}
+  #frame{position:relative; box-shadow:0 0 0 1px #1a2348, 0 0 60px rgba(40,230,255,.12), 0 30px 90px rgba(0,0,0,.8); border-radius:6px; overflow:hidden;
+    width:min(100vw, calc(100vh * 960 / 544), 960px); aspect-ratio:960/544;}
+  canvas{display:block;image-rendering:pixelated;background:#000;width:100%;height:100%}
+  /* CRT overlay */
+  #crt{display:none;position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:.5;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px);}
+  #vig{display:none;position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.45) 100%);}
+  #hint{position:fixed;left:0;right:0;bottom:10px;text-align:center;color:#5b6aa0;font-size:13px;letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+  #hint b{color:#9fb4ff}
+  /* ---- touch controls ---- */
+  #touch{display:none;position:fixed;inset:0;pointer-events:none;z-index:50;
+    font-family:'Orbitron',sans-serif;-webkit-user-select:none;user-select:none}
+  body.touchmode #touch{display:block}
+  body.touchmode #hint{display:none}
+  .tbtn{position:absolute;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;
+    color:#cfeeff;background:rgba(12,18,44,.5);border:1.5px solid rgba(120,150,255,.45);border-radius:14px;
+    font-weight:700;letter-spacing:.06em;backdrop-filter:blur(2px);-webkit-tap-highlight-color:transparent}
+  .tbtn.active{background:rgba(40,230,255,.35);border-color:#28e6ff;color:#fff}
+  body.touchmode #bU, body.touchmode #bDN{display:none}
+  body.touchmode.gridnav #bU, body.touchmode.gridnav #bDN{display:flex}
+  #bU{left:13vw;bottom:21vh;width:14vw;height:12vw;max-width:80px;max-height:66px;font-size:22px;border-color:rgba(120,150,255,.5)}
+  #bL{left:1vw;bottom:9vh;width:15vw;height:15vw;max-width:88px;max-height:88px;font-size:28px}
+  #bR{left:21vw;bottom:9vh;width:15vw;height:15vw;max-width:88px;max-height:88px;font-size:28px}
+  #bDN{left:13vw;bottom:1vh;width:14vw;height:12vw;max-width:80px;max-height:66px;font-size:22px;border-color:rgba(120,150,255,.5)}
+  #bJ{right:3vw;bottom:17vh;width:17vw;height:17vw;max-width:96px;max-height:96px;border-radius:50%;font-size:15px;border-color:rgba(40,230,255,.6)}
+  #bF{right:22vw;bottom:5vh;width:17vw;height:17vw;max-width:96px;max-height:96px;border-radius:50%;font-size:15px;border-color:rgba(255,46,136,.6)}
+  #bD{right:3vw;bottom:2vh;width:13vw;height:11vw;max-width:78px;max-height:64px;font-size:13px;border-color:rgba(255,210,74,.55)}
+  #bS{left:50%;transform:translateX(-50%);top:2vh;width:108px;height:38px;font-size:12px}
+  #bW{right:3vw;top:2vh;width:64px;height:38px;font-size:12px}
+  #bX{left:3vw;top:2vh;width:64px;height:38px;font-size:12px;border-color:rgba(255,93,93,.5)}
+  #rotate{display:none;position:fixed;inset:0;z-index:99;background:#05060e;color:#9fb4ff;
+    align-items:center;justify-content:center;flex-direction:column;gap:14px;text-align:center;
+    font-family:'Orbitron',sans-serif;font-size:15px;letter-spacing:.1em;padding:24px}
+  #rotate .ph{width:46px;height:78px;border:3px solid #28e6ff;border-radius:8px;animation:rot 1.6s ease-in-out infinite}
+  #rotate .skip{margin-top:10px;padding:10px 20px;border:1.5px solid #ff2e88;border-radius:10px;color:#ffd2e6;font-size:13px}
+  @keyframes rot{0%,25%{transform:rotate(0)}60%,100%{transform:rotate(90deg)}}
+  body.show-rotate #rotate{display:flex}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="frame">
+    <canvas id="cv" width="960" height="544"></canvas>
+    <div id="crt"></div><div id="vig"></div>
+  </div>
+</div>
+<div id="hint"><b>D-Pad / ←→</b> move &nbsp; <b>✕ / Z</b> jump &nbsp; <b>▢ / X</b> fire·charge &nbsp; <b>◯ / C</b> dash &nbsp; <b>L·R / A·S</b> weapon &nbsp; <b>START</b> confirm·pause</div>
+<div id="touch">
+  <div class="tbtn" id="bU" data-k="U">▲</div>
+  <div class="tbtn" id="bL" data-k="L">◀</div>
+  <div class="tbtn" id="bR" data-k="R">▶</div>
+  <div class="tbtn" id="bDN" data-k="D">▼</div>
+  <div class="tbtn" id="bJ" data-k="J">JUMP</div>
+  <div class="tbtn" id="bF" data-k="F">FIRE</div>
+  <div class="tbtn" id="bD" data-k="DS">DASH</div>
+  <div class="tbtn" id="bS" data-k="OK">START</div>
+  <div class="tbtn" id="bW" data-k="WR">WPN</div>
+  <div class="tbtn" id="bX" data-k="ESC">EXIT</div>
+</div>
+<div id="rotate"><div class="ph"></div>ROTATE TO LANDSCAPE<br>for the full view<div class="skip" id="skipRotate">PLAY ANYWAY ▶</div></div>
+<script>
+'use strict';
+/* ============================================================
+   AXIOM PROTOCOL — a love letter to 16-bit hunter platformers
+   Original characters & world. Canvas, zero dependencies.
+   ============================================================ */
+const W = 960, H = 544;
+/* ============================================================
+   16-BIT PIXEL RENDERER (High-End Edition)
+   The whole game draws into a half-resolution 480x272 buffer that is
+   scaled up 2x with nearest-neighbour, so every shape becomes chunky
+   pixels. Sprites draw on their own layer and get a 1px dark outline.
+   Glow (shadowBlur) is disabled for a clean, flat palette look.
+   Text is replayed on the full-res canvas in a pixel font so it stays
+   sharp and readable.
+   ============================================================ */
+const PX = 2;                                   /* pixel scale */
+const CV = document.getElementById('cv'), MAIN = CV.getContext('2d');
+MAIN.imageSmoothingEnabled = false;
+const OUTLINE = '#0b0614';
+const SPR_SCALE = 1.3;   /* hero sprites drawn larger than their hitbox, like 16-bit action games */
+const TXT = [];                                  /* queued text for full-res replay */
+function pixFont(f){
+  if(/Press Start/.test(f))return f;
+  const m=/(\d+(?:\.\d+)?)px/.exec(f||''); const s=m?parseFloat(m[1]):12;
+  let ps=Math.round(s*0.6); if(ps>=32)ps=Math.round(ps/8)*8; ps=Math.max(8,ps);
+  return ps+"px 'Press Start 2P', monospace";
+}
+function getM(ctx){ const m=ctx.getTransform?ctx.getTransform():null;
+  return m&&typeof m.a==='number'?m:{a:1/PX,b:0,c:0,d:1/PX,e:0,f:0}; }
+function mkLayer(){
+  const c=document.createElement('canvas'); c.width=W/PX; c.height=H/PX;
+  const x=c.getContext('2d'); x.imageSmoothingEnabled=false;
+  /* flat look: no glow */
+  try{Object.defineProperty(x,'shadowBlur',{get(){return 0;},set(){},configurable:true});}catch(e){}
+  /* text → queued for crisp replay */
+  x.fillText=function(s,tx,ty){ const m=getM(x);
+    TXT.push({s:String(s),x:tx,y:ty,font:pixFont(x.font),fill:x.fillStyle,align:x.textAlign,
+      base:x.textBaseline,alpha:x.globalAlpha,m:[m.a,m.b,m.c,m.d,m.e,m.f]}); };
+  x.strokeText=function(){};
+  /* snap solid rects to the pixel grid → hard pixel edges */
+  const ofr=x.fillRect.bind(x);
+  x.fillRect=function(rx,ry,rw,rh){
+    if(typeof x.fillStyle!=='string'){ofr(rx,ry,rw,rh);return;}
+    const m=x.getTransform?x.getTransform():null;
+    if(!m||typeof m.a!=='number'||m.b!==0||m.c!==0){ofr(rx,ry,rw,rh);return;}
+    let x0=Math.round(m.a*rx+m.e), x1=Math.round(m.a*(rx+rw)+m.e);
+    let y0=Math.round(m.d*ry+m.f), y1=Math.round(m.d*(ry+rh)+m.f);
+    if(x1<x0){const t=x0;x0=x1;x1=t;} if(y1<y0){const t=y0;y0=y1;y1=t;}
+    if(x1===x0)x1++; if(y1===y0)y1++;
+    x.setTransform(1,0,0,1,0,0); ofr(x0,y0,x1-x0,y1-y0); x.setTransform(m.a,m.b,m.c,m.d,m.e,m.f);
+  };
+  return {c,x};
+}
+const LO=mkLayer(), ACT=mkLayer(), SIL=mkLayer();
+let CX = LO.x;
+function beginPixelFrame(){
+  TXT.length=0; LO.x.setTransform(1,0,0,1,0,0); LO.x.clearRect(0,0,W/PX,H/PX);
+  LO.x.setTransform(1/PX,0,0,1/PX,0,0); CX=LO.x;
+}
+/* actor layer: everything drawn between begin/end gets a dark 1px outline */
+function beginActors(){
+  const m=getM(LO.x);
+  ACT.x.setTransform(1,0,0,1,0,0); ACT.x.clearRect(0,0,W/PX,H/PX);
+  ACT.x.setTransform(m.a,m.b,m.c,m.d,m.e,m.f); ACT.x.globalAlpha=1; CX=ACT.x;
+}
+function endActors(){
+  const s=SIL.x;
+  s.setTransform(1,0,0,1,0,0); s.globalCompositeOperation='source-over'; s.clearRect(0,0,W/PX,H/PX);
+  s.drawImage(ACT.c,0,0); s.globalCompositeOperation='source-in'; s.fillStyle=OUTLINE;
+  s.fillRect(0,0,W/PX,H/PX); s.globalCompositeOperation='source-over';
+  const l=LO.x, m=getM(l); l.setTransform(1,0,0,1,0,0); l.globalAlpha=1;
+  l.drawImage(SIL.c,-1,0); l.drawImage(SIL.c,1,0); l.drawImage(SIL.c,0,-1); l.drawImage(SIL.c,0,1);
+  l.drawImage(ACT.c,0,0); l.setTransform(m.a,m.b,m.c,m.d,m.e,m.f); CX=LO.x;
+}
+function presentPixelFrame(){
+  MAIN.setTransform(1,0,0,1,0,0); MAIN.imageSmoothingEnabled=false; MAIN.globalAlpha=1;
+  MAIN.drawImage(LO.c,0,0,W,H);
+  for(const t of TXT){
+    MAIN.setTransform(t.m[0]*PX,t.m[1]*PX,t.m[2]*PX,t.m[3]*PX,t.m[4]*PX,t.m[5]*PX);
+    MAIN.font=t.font; MAIN.textAlign=t.align||'left'; MAIN.textBaseline=t.base||'alphabetic';
+    MAIN.globalAlpha=t.alpha==null?1:t.alpha;
+    MAIN.fillStyle=OUTLINE; MAIN.fillText(t.s,t.x+2,t.y+2,W-8);
+    try{MAIN.fillStyle=t.fill;}catch(e){MAIN.fillStyle='#fff';}
+    MAIN.fillText(t.s,t.x,t.y,W-8);
+  }
+  MAIN.setTransform(1,0,0,1,0,0); MAIN.globalAlpha=1; TXT.length=0;
+}
+
+/* ---------- utils ---------- */
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rnd=(a=1,b)=>b===undefined?Math.random()*a:a+Math.random()*(b-a);
+const irnd=(a,b)=>Math.floor(rnd(a,b+1));
+const TAU=Math.PI*2;
+const aabb=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+function sRand(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return

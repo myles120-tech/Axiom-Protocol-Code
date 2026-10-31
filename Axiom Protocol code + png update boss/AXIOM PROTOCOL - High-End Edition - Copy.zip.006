@@ -1,0 +1,150 @@
+=='dive'){
+      if(this.pt<20)this.y-=2;
+      else if(this.pt<50){const dx=player.x-this.x;this.x+=clamp(dx,-7,7);this.y+=6;
+        if(G.t%2===0)spawnP(this.x+rnd(this.w),this.y,0,rnd(-2,-1),14,'#cfeeff',3,0,true);}
+      else{this.phase='idle';this.pt=0;}}
+    if(this.phase==='descend'){
+      /* the widow drops to the floor, slams, lingers (vulnerable), then lifts off */
+      if(this.pt===1)SFX.warn();
+      if(this.pt<26){ // fall to ground
+        this.y=Math.min(floorY,this.y+(rage?8:12));
+        if(this.y>=floorY&&!this.landed){this.landed=true;this.grounded=true;
+          addShake(9);SFX.bigboom();flash=5;flashCol='rgba(180,230,255,.22)';
+          /* frost shockwave skating both ways across the floor */
+          for(const d of [-1,1])eshots.push({x:this.x+this.w/2,y:floorY+this.h-22,vx:d*5,vy:0,w:18,h:22,col:'#9fdcff',dmg:3,life:90,quakeWave:true});
+          /* burst of icicles fanning up */
+          for(let i=0;i<5;i++)eshots.push({x:this.x+this.w/2,y:floorY+10,vx:(i-2)*2.2,vy:-7,w:10,h:12,col:'#cfeeff',dmg:3,life:120,grav:.32});
+          for(let k=0;k<18;k++)spawnP(this.x+rnd(this.w),floorY+this.h,rnd(-3,3),rnd(-4,-1),24,'#eafaff',3,.12,true);}}
+      else if(this.pt<26+(rage?28:42)){ // grounded & exposed; takes potshots
+        this.y=floorY;this.grounded=true;
+        if(this.pt%20===0){tone(760,.1,'triangle',.05,-200);
+          const a=Math.atan2(player.y-(this.y+this.h/2),player.x-(this.x+this.w/2));
+          eshots.push({x:this.x+this.w/2,y:this.y+this.h/2,vx:Math.cos(a)*4,vy:Math.sin(a)*4,w:10,h:10,col:'#9fdcff',dmg:3,life:140});}}
+      else if(this.pt<26+(rage?28:42)+24){ // lift back into the air
+        this.grounded=false;this.y-=3;
+        if(G.t%3===0)spawnP(this.x+rnd(this.w),this.y+this.h,0,rnd(1,2),14,'#cfeeff',2,0,true);}
+      else{this.landed=false;this.phase='idle';this.pt=0;}}
+    if(G.t%5===0)spawnP(this.x+rnd(this.w),this.y+this.h,rnd(-.4,.4),rnd(.5,1.5),24,'#cfeeff',2,0,true);
+  }
+  aiStorm(A,rage){
+    if(this.phase==='idle'){this.vx=this.face*(rage?3.2:2.2);
+      if(this.pt>(rage?24:42)){this.phase=Math.random()<.55?'bolt':'dashes';this.pt=0;}}
+    else if(this.phase==='bolt'){this.vx=0;
+      if(this.pt===14)SFX.warn();
+      if(this.pt===40){addShake(6);tone(1800,.25,'sawtooth',.1,-1400);
+        const bx=player.x+player.w/2;
+        eshots.push({x:bx-8,y:A.y-40,vx:0,vy:13,w:16,h:60,col:'#ffe34a',dmg:3,life:60,bolt:true});
+        flash=4;flashCol='rgba(255,240,160,.35)';}
+      if(this.pt>62){this.phase='idle';this.pt=0;}}
+    else if(this.phase==='dashes'){
+      if(this.pt%26===1){this.vx=this.face*(rage?8:12);SFX.dash();
+        for(let i=0;i<8;i++)spawnP(this.x+this.w/2,this.y+rnd(this.h),-this.face*rnd(2,4),0,16,'#ffe34a',3,0,true);}
+      if(this.pt%26>14)this.vx*=.8;
+      if(this.pt>78){this.vx=0;this.phase='idle';this.pt=0;}}
+    if(G.t%6===0)spawnP(this.x+rnd(this.w),this.y+rnd(this.h),rnd(-1,1),rnd(-1,1),10,'#fff48a',2,0,true);
+  }
+  aiBio(A,rage){
+    if(this.phase==='idle'){this.vx=Math.sin(this.t*.05)*1.4;
+      if(this.pt>(rage?28:46)){this.phase=Math.random()<.5?'vines':'seeds';this.pt=0;}}
+    else if(this.phase==='vines'){this.vx=0;
+      if(this.pt===10)SFX.warn();
+      if(this.pt===34){addShake(5);SFX.boom();
+        for(let i=0;i<3;i++){const vx2=A.x+60+i*((A.w-120)/2)+rnd(-30,30);
+          eshots.push({x:vx2,y:A.y+A.h-16,vx:0,vy:-1,w:14,h:0,col:'#5dff7a',dmg:3,life:80,vine:true,grow:6,maxH:130});}}
+      if(this.pt>70){this.phase='idle';this.pt=0;}}
+    else if(this.phase==='seeds'){
+      if(this.pt%16===0&&this.pt<=48){tone(500,.08,'triangle',.05);
+        eshots.push({x:this.x+this.w/2,y:this.y,vx:rnd(-3,3),vy:-8,w:10,h:10,col:'#9dff7a',dmg:3,life:170,grav:.25,hom:rage?2.2:0});}
+      if(this.pt>64){this.phase='idle';this.pt=0;}}
+    if(G.t%7===0)spawnP(this.x+rnd(this.w),this.y+rnd(this.h),rnd(-.5,.5),rnd(-.8,-.2),30,'#8aff9a',2,0,true);
+  }
+  aiAbyss(A,rage){  /* LEVIATHAN CORE — floating serpent that periodically crashes down */
+    this.grounded=false;
+    const floorY=A.y+A.h-48-this.h;
+    if(this.phase==='idle'||this.phase==='bubbles'||this.phase==='torrent'){
+      const tx=A.x+A.w/2+Math.sin(this.t*.022)*(A.w/2-80), ty=A.y+90+Math.sin(this.t*.05)*60;
+      this.x=lerp(this.x,tx-this.w/2,.05);this.y=lerp(this.y,ty,.05);
+    }
+    if(this.phase==='idle'&&this.pt>(rage?28:49)){
+      const r=Math.random();
+      this.phase = r<(rage?0.4:0.32) ? 'crash' : (r<0.66?'bubbles':'torrent');
+      this.pt=0;
+    }
+    if(this.phase==='bubbles'){
+      if(this.pt%12===0&&this.pt<=60){tone(280,.12,'sine',.05,80);
+        for(let i=-1;i<=1;i++)eshots.push({x:this.x+this.w/2,y:this.y+this.h/2,
+          vx:(player.x<this.x?-1:1)*rnd(1.5,3),vy:-rnd(1,3)+i,w:12,h:12,col:'#3ad0ff',dmg:3,life:200,grav:-0.02,hom:rage?1.6:0});}
+      if(this.pt>80){this.phase='idle';this.pt=0;}}
+    if(this.phase==='torrent'){
+      if(this.pt===16)SFX.warn();
+      if(this.pt===40){addShake(6);tone(160,.4,'sine',.1,60);
+        const dir=player.x<this.x?-1:1;
+        for(let i=0;i<5;i++)eshots.push({x:this.x+this.w/2,y:this.y+this.h/2,vx:dir*(4+i*1.4),vy:rnd(-1,1),w:16,h:14,col:'#2aa8ff',dmg:3,life:120});}
+      if(this.pt>72){this.phase='idle';this.pt=0;}}
+    if(this.phase==='crash'){
+      /* rear up, then slam to the seabed; lingers exposed, then surges back up */
+      if(this.pt===1)SFX.warn();
+      if(this.pt<16){this.y=lerp(this.y,A.y+40,.2);this.x=lerp(this.x,player.x-this.w/2,.12);} // telegraph: tracks you up high
+      else if(this.pt<34){this.y=Math.min(floorY,this.y+(rage?8:12)); // dive
+        if(G.t%2===0)spawnP(this.x+rnd(this.w),this.y,0,rnd(-2,-1),14,'#bfeaff',3,0,true,'circ');
+        if(this.y>=floorY&&!this.landed){this.landed=true;this.grounded=true;
+          addShake(11);SFX.bigboom();flash=5;flashCol='rgba(60,170,255,.22)';
+          /* splash: ground-skating waves both ways + spray upward */
+          for(const d of [-1,1])eshots.push({x:this.x+this.w/2,y:floorY+this.h-22,vx:d*5.5,vy:0,w:18,h:22,col:'#2aa8ff',dmg:3,life:90,quakeWave:true});
+          for(let i=0;i<7;i++)eshots.push({x:this.x+this.w/2,y:floorY+10,vx:(i-3)*2,vy:-rnd(5,8),w:11,h:11,col:'#3ad0ff',dmg:3,life:120,grav:.3});
+          for(let k=0;k<22;k++)spawnP(this.x+rnd(this.w),floorY+this.h,rnd(-3,3),rnd(-5,-1),26,'#bfeaff',3,.14,true,'circ');}}
+      else if(this.pt<34+(rage?31:45)){ // grounded & exposed
+        this.y=floorY;this.grounded=true;
+        if(this.pt%22===0){tone(300,.12,'sine',.05,60);
+          const a=Math.atan2(player.y-(this.y+this.h/2),player.x-(this.x+this.w/2));
+          eshots.push({x:this.x+this.w/2,y:this.y+this.h/2,vx:Math.cos(a)*4,vy:Math.sin(a)*4,w:12,h:12,col:'#3ad0ff',dmg:3,life:150});}}
+      else if(this.pt<34+(rage?31:45)+26){ this.grounded=false;this.y-=3; // surge back up
+        if(G.t%3===0)spawnP(this.x+rnd(this.w),this.y+this.h,0,rnd(1,2),14,'#bfeaff',2,0,true,'circ');}
+      else{this.landed=false;this.phase='idle';this.pt=0;}}
+    if(G.t%4===0)spawnP(this.x+rnd(this.w),this.y+rnd(this.h),rnd(-.4,.4),rnd(-1.2,-.3),26,'#bfeaff',2,0,true,'circ');
+  }
+  aiShadow(A,rage){  /* NOCTURNE PHANTOM — teleports, after-images, bolt fans */
+    this.grounded=false;
+    if(this.blink===undefined){this.blink=0;}
+    if(this.phase==='idle'){this.y=lerp(this.y,A.y+A.h-48-this.h,.1);
+      if(this.pt>(rage?20:35)){this.phase=Math.random()<.5?'tele':'fan';this.pt=0;}}
+    if(this.phase==='tele'){
+      if(this.pt===8){this.blink=10;for(let i=0;i<14;i++)burst(this.x+this.w/2,this.y+this.h/2,1,'#a36aff',3);SFX.dash();}
+      if(this.pt===16){ // reappear near player
+        this.x=clamp(player.x+(Math.random()<.5?-120:120),A.x+20,A.x+A.w-this.w-20);
+        this.y=A.y+60+rnd(60);this.blink=0;burst(this.x+this.w/2,this.y+this.h/2,16,'#b98aff',4);
+        const a=Math.atan2(player.y-this.y,player.x-this.x);
+        eshots.push({x:this.x+this.w/2,y:this.y+this.h/2,vx:Math.cos(a)*6,vy:Math.sin(a)*6,w:16,h:6,col:'#a36aff',dmg:3,life:90});}
+      if(this.pt>(rage?15:24)){this.phase='idle';this.pt=0;}}
+    if(this.phase==='fan'){
+      if(this.pt===20){SFX.bigshot();const n=rage?9:6;
+        for(let i=0;i<n;i++){const a=Math.PI*(0.15+0.7*i/(n-1))+(player.x<this.x?Math.PI*0.6:-Math.PI*0.05);
+          const aa=Math.atan2(player.y-this.y,player.x-this.x)+(i-(n-1)/2)*0.18;
+          eshots.push({x:this.x+this.w/2,y:this.y+this.h/2,vx:Math.cos(aa)*5,vy:Math.sin(aa)*5,w:12,h:6,col:'#b98aff',dmg:3,life:110});}}
+      if(this.pt>54){this.phase='idle';this.pt=0;}}
+    if(this.blink>0)this.blink--;
+    if(G.t%3===0)spawnP(this.x+rnd(this.w),this.y+rnd(this.h),0,0,12,'#7a4aff',2,0,true);
+  }
+  aiMetal(A,rage){  /* SCRAP TITAN — slow, heavy stomps + rivet spread, tanky */
+    if(this.phase==='idle'){this.vx=this.face*(rage?1.8:1.1);
+      if(this.pt>(rage?28:42)){this.phase=['stomp','rivets','charge'][irnd(0,2)];this.pt=0;}}
+    else if(this.phase==='stomp'){
+      if(this.pt===1){this.vy=-10;this.vx=this.face*2;SFX.jump();}
+      if(this.onG&&this.pt>10){this.vx=0;addShake(12);SFX.bigboom();
+        for(let i=-3;i<=3;i++)if(i)eshots.push({x:this.x+this.w/2,y:this.y+this.h-8,vx:i*2.2,vy:-3,w:12,h:12,col:'#c9d2e0',dmg:3,life:120,grav:.4});
+        this.phase='idle';this.pt=0;}}
+    else if(this.phase==='rivets'){this.vx=0;
+      if(this.pt%10===0&&this.pt<=50){noise(.05,.05,2600);tone(440,.06,'square',.05);
+        eshots.push({x:this.x+(this.face>0?this.w:0),y:this.y+20,vx:this.face*7,vy:rnd(-2,0),w:11,h:11,col:'#e6ecf6',dmg:3,life:110,grav:.18,bounce:1});}
+      if(this.pt>62){this.phase='idle';this.pt=0;}}
+    else if(this.phase==='charge'){
+      if(this.pt%30===1){this.vx=this.face*(rage?8:12);SFX.dash();addShake(4);
+        for(let i=0;i<6;i++)spawnP(this.x+this.w/2,this.y+rnd(this.h),-this.face*rnd(1,3),0,14,'#cdd6e6',3,0,true);}
+      if(this.pt%30>16)this.vx*=.82;
+      if(this.pt>80){this.vx=0;this.phase='idle';this.pt=0;}}
+    if(G.t%6===0)spawnP(this.x+rnd(this.w),this.y,rnd(-.6,.6),rnd(-1,0),12,'#9fb0c8',2,0,true);
+  }
+  aiSand(A,rage){  /* SEISMIC NOMAD — quakes, rolling boulders, burrow */
+    if(this.phase==='idle'){this.vx=Math.sin(this.t*.04)*1.6;
+      if(this.pt>(rage?24:41)){this.phase=['quake','boulders','burrow'][irnd(0,2)];this.pt=0;}}
+    else if(this.phase==='quake

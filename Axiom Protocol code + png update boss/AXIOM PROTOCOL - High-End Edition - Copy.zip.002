@@ -1,0 +1,178 @@
+ s/4294967296;}}
+
+/* ---------- input ---------- */
+const Keys={}, Pressed={};
+const KEYMAP={ArrowLeft:'L',a:'L',ArrowRight:'R',d:'R',ArrowUp:'U',w:'U',ArrowDown:'D',s:'D',
+  z:'J',k:'J',x:'F',j:'F',c:'DS',Shift:'DS',Enter:'OK',Escape:'ESC',q:'WL',e:'WR'};
+addEventListener('keydown',e=>{
+  let k=KEYMAP[e.key]||KEYMAP[e.key.toLowerCase()];
+  if(e.key==='a'||e.key==='A')k='WL'; if(e.key==='s'||e.key==='S')k='WR';
+  if(e.key==='ArrowLeft')k='L'; if(e.key==='ArrowRight')k='R'; if(e.key==='ArrowUp')k='U'; if(e.key==='ArrowDown')k='D';
+  if(!k)return; if(!Keys[k])Pressed[k]=true; Keys[k]=true;
+  if(['L','R','U','D','J','F','DS','OK'].includes(k))e.preventDefault();
+});
+addEventListener('keyup',e=>{
+  let k=KEYMAP[e.key]||KEYMAP[e.key.toLowerCase()];
+  if(e.key==='a'||e.key==='A')k='WL'; if(e.key==='s'||e.key==='S')k='WR';
+  if(e.key==='ArrowLeft')k='L'; if(e.key==='ArrowRight')k='R'; if(e.key==='ArrowUp')k='U'; if(e.key==='ArrowDown')k='D';
+  if(k)Keys[k]=false;
+});
+const tap=k=>{const v=Pressed[k];Pressed[k]=false;return v;};
+
+/* ---------- gamepad (PS Vita physical controls / any standard pad) ---------- */
+let gpState={}, gpConnected=false;
+/* W3C Standard Gamepad maps the same as the Vita's face buttons:
+   0:× 1:○ 2:□ 3:△ 4:L 5:R 8:SELECT 9:START 12-15:d-pad */
+function pollGamepad(){
+  if(!navigator.getGamepads)return;
+  let gp=null; for(const p of navigator.getGamepads())if(p){gp=p;break;}
+  if(!gp){gpConnected=false;return;}
+  gpConnected=true;
+  const bp=i=>{const b=gp.buttons[i];return !!(b&&(b.pressed||b.value>0.4));};
+  const down={};
+  const fb={0:'J',1:'DS',2:'F',3:'WR',4:'WL',5:'WR',8:'ESC',9:'OK'};
+  for(const i in fb)down[fb[i]]=down[fb[i]]||bp(+i);
+  const ax=gp.axes[0]||0, ay=gp.axes[1]||0, dz=0.45;
+  down.U=bp(12)||ay<-dz; down.D=bp(13)||ay>dz; down.L=bp(14)||ax<-dz; down.R=bp(15)||ax>dz;
+  for(const k of ['J','DS','F','WR','WL','ESC','OK','U','D','L','R']){
+    const v=!!down[k], was=gpState[k]||false;
+    if(v&&!was){if(!Keys[k])Pressed[k]=true;Keys[k]=true;audio();}
+    else if(!v&&was){Keys[k]=false;}
+    else if(v){Keys[k]=true;}
+    gpState[k]=v;
+  }
+}
+addEventListener('gamepadconnected',()=>{gpConnected=true;});
+
+/* ---------- audio ---------- */
+let AC=null, MUS={timer:null,step:0,song:null,gain:null};
+function audio(){ if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();} if(AC.state==='suspended')AC.resume(); return AC; }
+function tone(f,dur,type='square',vol=.08,slide=0,delay=0){
+  try{const ac=audio(),t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();
+  o.type=type;o.frequency.setValueAtTime(f,t);
+  if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(20,f+slide),t+dur);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+dur+.02);}catch(e){}
+}
+function noise(dur=.2,vol=.12,fc=800){
+  try{const ac=audio(),t=ac.currentTime,n=ac.sampleRate*dur,buf=ac.createBuffer(1,n,ac.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
+  const s=ac.createBufferSource();s.buffer=buf;const f=ac.createBiquadFilter();f.type='lowpass';f.frequency.value=fc;
+  const g=ac.createGain();g.gain.value=vol;s.connect(f);f.connect(g);g.connect(ac.destination);s.start(t);}catch(e){}
+}
+const SFX={
+  shot:()=>tone(880,.08,'square',.06,-300),
+  charge1:()=>tone(220,.3,'sawtooth',.04,400),
+  bigshot:()=>{tone(440,.18,'square',.1,-200);noise(.12,.08,1400);},
+  slash:()=>{noise(.08,.07,3000);tone(1200,.06,'sawtooth',.04,-600);},
+  hit:()=>{tone(160,.1,'square',.09,-60);noise(.06,.06,900);},
+  hurt:()=>{tone(200,.25,'sawtooth',.1,-150);noise(.15,.08,500);},
+  boom:()=>{noise(.5,.2,600);tone(90,.4,'triangle',.15,-50);},
+  bigboom:()=>{noise(.9,.25,400);tone(60,.8,'triangle',.2,-30);for(let i=0;i<4;i++)tone(120+i*60,.3,'square',.05,-80,i*.1);},
+  jump:()=>tone(330,.12,'square',.05,160),
+  dash:()=>noise(.15,.06,2200),
+  pickup:()=>{tone(660,.09,'square',.07);tone(990,.12,'square',.07,0,.08);},
+  tank:()=>{[523,659,784,1046].forEach((f,i)=>tone(f,.14,'square',.08,0,i*.09));},
+  blip:()=>tone(740,.06,'square',.05),
+  sel:()=>{tone(523,.08,'square',.06);tone(784,.1,'square',.06,0,.06);},
+  door:()=>{noise(.5,.1,300);tone(80,.5,'sawtooth',.07,40);},
+  warn:()=>{tone(440,.2,'square',.09,-220);tone(440,.2,'square',.09,-220,.25);},
+};
+/* tiny music sequencer: [bass[], lead[]], 8 steps, freq in Hz (0=rest) */
+const SONGS={
+  title:{bpm:112,bass:[110,0,110,0,131,0,98,0],lead:[440,523,659,523,440,392,330,392],lt:'triangle'},
+  select:{bpm:124,bass:[98,98,0,98,117,0,98,0],lead:[392,0,494,587,0,494,392,294],lt:'square'},
+  magma:{bpm:140,bass:[87,87,104,87,87,87,78,104],lead:[349,415,523,415,349,311,415,523],lt:'sawtooth'},
+  cryo:{bpm:104,bass:[110,0,0,131,110,0,0,98],lead:[523,659,784,659,587,523,440,523],lt:'triangle'},
+  storm:{bpm:150,bass:[98,98,98,117,98,98,131,117],lead:[392,494,587,740,587,494,587,740],lt:'square'},
+  bio:{bpm:118,bass:[104,0,124,0,104,0,93,0],lead:[415,494,622,494,554,494,415,370],lt:'triangle'},
+  abyss:{bpm:96,bass:[65,0,82,0,73,0,55,0],lead:[262,330,392,330,294,247,330,392],lt:'sine'},
+  shadow:{bpm:128,bass:[110,0,104,110,0,104,98,0],lead:[440,0,415,494,0,415,370,415],lt:'triangle'},
+  metal:{bpm:146,bass:[73,73,73,87,73,73,98,87],lead:[294,294,349,294,392,349,294,247],lt:'square'},
+  sand:{bpm:108,bass:[98,0,87,98,110,0,87,0],lead:[392,440,523,440,392,349,440,523],lt:'sawtooth'},
+  boss:{bpm:160,bass:[82,82,98,82,82,82,110,98],lead:[330,392,494,587,494,392,330,294],lt:'sawtooth'},
+  core:{bpm:132,bass:[73,73,87,73,92,92,73,87],lead:[294,349,440,349,294,440,523,440],lt:'sawtooth'},
+  end:{bpm:96,bass:[131,0,98,0,110,0,87,0],lead:[523,587,659,784,659,587,523,440],lt:'triangle'},
+};
+function playSong(name){
+  if(MUS.song===name)return; stopSong(); MUS.song=name;
+  const s=SONGS[name]; if(!s)return;
+  const stepDur=60/s.bpm/2;
+  MUS.timer=setInterval(()=>{
+    if(!AC)return;
+    const i=MUS.step%8;
+    if(s.bass[i])tone(s.bass[i],stepDur*.9,'triangle',.05);
+    if(s.lead[i])tone(s.lead[i],stepDur*.7,s.lt,.028);
+    if(i%4===0)noise(.04,.02,3000);
+    MUS.step++;
+  },stepDur*1000);
+}
+function stopSong(){if(MUS.timer)clearInterval(MUS.timer);MUS.timer=null;MUS.song=null;MUS.step=0;}
+
+/* ---------- particles ---------- */
+let parts=[];
+function spawnP(x,y,vx,vy,life,col,size=3,grav=0,glow=false,shape='sq'){
+  parts.push({x,y,vx,vy,life,max:life,col,size,grav,glow,shape});
+}
+function burst(x,y,n,col,sp=4,size=3,grav=.1){
+  for(let i=0;i<n;i++){const a=rnd(TAU),s=rnd(.5,sp);spawnP(x,y,Math.cos(a)*s,Math.sin(a)*s,rnd(20,45),col,rnd(1,size+1),grav,true);}
+}
+function updateParts(){
+  for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.x+=p.vx;p.y+=p.vy;p.vy+=p.grav;p.life--;
+    if(p.life<=0)parts.splice(i,1);}
+}
+function drawParts(cam){
+  for(const p of parts){const a=p.life/p.max;CX.globalAlpha=a;
+    if(p.glow){CX.shadowColor=p.col;CX.shadowBlur=8;}
+    CX.fillStyle=p.col;
+    if(p.shape==='sq')CX.fillRect(p.x-cam.x-p.size/2,p.y-cam.y-p.size/2,p.size,p.size);
+    else{CX.beginPath();CX.arc(p.x-cam.x,p.y-cam.y,p.size,0,TAU);CX.fill();}
+    CX.shadowBlur=0;}
+  CX.globalAlpha=1;
+}
+let shake=0, flash=0, flashCol='#fff';
+function addShake(n){shake=Math.max(shake,n);}
+
+/* ---------- game data ---------- */
+const CHARS={
+  VOLT:{name:'VOLT-7',title:'The Azure Vanguard',col:'#28e6ff',col2:'#0a5fa8',hair:'#dff7ff',
+    desc:['Prototype hunter unit. Variable buster with','three-stage charge. Reliable. Relentless.','He still remembers the lab burning.'],
+    spd:3.1,jump:-10.8,dashSpd:7.2,doubleJump:false,melee:false},
+  ASH:{name:'ASH REQUIEM',title:'The Crimson Blade',col:'#ff2e88',col2:'#7a0f3a',hair:'#ffd2e6',
+    desc:['Decommissioned war frame, reawakened.','Plasma edge, double thruster jump.','She fights to decide what she is for.'],
+    spd:3.5,jump:-10.2,dashSpd:7.8,doubleJump:true,melee:true},
+};
+const STAGES=[
+  {id:'magma',name:'FORGE DEPTHS',boss:'MAGMA TYRANT',weapon:'MAGMA WAVE',wcol:'#ff7a2e',
+    sky:['#2a0a08','#581408','#a13208'],plat:'#3a1410',platEdge:'#ff6a30',amb:'ember',song:'magma'},
+  {id:'cryo',name:'GLACIER ARRAY',boss:'CRYO WIDOW',weapon:'FROST SHARD',wcol:'#9fdcff',
+    sky:['#04101f','#0a2742','#15517d'],plat:'#11283d',platEdge:'#7ed4ff',amb:'snow',song:'cryo'},
+  {id:'storm',name:'SKY BASTION',boss:'STORM HERALD',weapon:'VOLT LANCE',wcol:'#ffe34a',
+    sky:['#0a0a18','#1c1838','#3a2c66'],plat:'#221d3d',platEdge:'#b9a4ff',amb:'rain',song:'storm'},
+  {id:'bio',name:'BIO GARDENS',boss:'VERDANT WARDEN',weapon:'THORN ORBIT',wcol:'#5dff7a',
+    sky:['#03140a','#0a2e14','#14572a'],plat:'#0e2c16',platEdge:'#46e06a',amb:'spore',song:'bio'},
+  {id:'abyss',name:'TIDAL ABYSS',boss:'LEVIATHAN CORE',weapon:'TIDE BREAKER',wcol:'#2aa8ff',
+    sky:['#02060f','#04203a','#0a4a6e'],plat:'#08283c',platEdge:'#3ad0ff',amb:'bubble',song:'abyss'},
+  {id:'shadow',name:'UMBRA VAULT',boss:'NOCTURNE PHANTOM',weapon:'SHADE BOLT',wcol:'#a36aff',
+    sky:['#070410','#160a28','#2a1248'],plat:'#160c28',platEdge:'#b98aff',amb:'void',song:'shadow'},
+  {id:'metal',name:'IRON FOUNDRY',boss:'SCRAP TITAN',weapon:'RIVET STORM',wcol:'#c9d2e0',
+    sky:['#0d0d10','#22232a','#3c4250'],plat:'#23262f',platEdge:'#cdd6e6',amb:'sparks',song:'metal'},
+  {id:'sand',name:'DUST WASTES',boss:'SEISMIC NOMAD',weapon:'QUAKE DRIVER',wcol:'#e0b070',
+    sky:['#1a0f06','#4a2c12','#8a5a28']  ,plat:'#3a2614',platEdge:'#f0c888',amb:'sand',song:'sand'},
+];
+const FINAL={id:'core',name:'THE CORE',boss:'NEXUS PRIME',sky:['#0c0410','#23082b','#46104f'],
+  plat:'#1d0d26',platEdge:'#d24aff',amb:'glitch',song:'core'};
+/* weakness ring of 8: each boss takes bonus damage from the previous boss's weapon */
+const WEAK={magma:'sand',cryo:'magma',storm:'cryo',bio:'storm',
+  abyss:'bio',shadow:'abyss',metal:'shadow',sand:'metal'};
+
+/* ---------- save state (in-memory run) ---------- */
+let G={
+  state:'TITLE', t:0, char:null, beaten:{}, tanks:{}, maxHP:16,
+  stage:null, deaths:0, selIdx:0, csIdx:0, weapon:'buster', wEnergy:{},
+  pendingEnding:null, noDamageFinal:true,
+  upgrades:{jump:0,dash:0,armor:0,arm:0}, gotUpg:{},
+};
+/* each citadel hides one armor part (off the main path) */
+const UPGRADES={
+  arm  :{stage:'magma',name:'BUSTER

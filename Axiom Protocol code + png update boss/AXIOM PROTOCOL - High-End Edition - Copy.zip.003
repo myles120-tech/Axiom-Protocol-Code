@@ -1,0 +1,167 @@
+ CORE', col:'#ff7a2e', blurb:'Shots strike harder.'},
+  armor:{stage:'cryo', name:'ARMOR PLATE', col:'#9fdcff', blurb:'Incoming damage reduced 40%.'},
+  jump :{stage:'storm',name:'THRUSTER CORE',col:'#ffe34a', blurb:'Adds a third air-jump.'},
+  dash :{stage:'bio',  name:'DASH BOOSTER', col:'#5dff7a', blurb:'Air-dash + longer, faster dash.'},
+};
+const STAGE_UPG={magma:'arm',cryo:'armor',storm:'jump',bio:'dash'};
+function freshGame(){
+  return {state:'TITLE',t:0,char:null,beaten:{},tanks:{},maxHP:16,stage:null,deaths:0,
+    selIdx:0,csIdx:0,weapon:'buster',wEnergy:{},noDamageFinal:true,
+    upgrades:{jump:0,dash:0,armor:0,arm:0},gotUpg:{}};
+}
+
+/* ---------- projectiles ---------- */
+let shots=[], eshots=[];
+function fireBuster(p,lv){
+  const dir=p.face, x=p.x+(dir>0?p.w+2:-8), y=p.y+12, ab=G.upgrades.arm?1:0;
+  const mx=p.x+(dir>0?p.w+4:-4), my=p.y+16;
+  p.muzT=12;p.muzBig=lv>0;p.muzCol=lv>1?'#aaf0ff':lv>0?'#28e6ff':'#9ff3ff';
+  for(let k=0;k<(lv>1?8:4);k++)spawnP(mx,my,dir*rnd(1,3)+rnd(-.5,.5),rnd(-1,1),rnd(8,16),p.muzCol,rnd(1,2+lv),0,true);
+  if(lv===0){shots.push({x,y,vx:dir*9,vy:0,w:10,h:6,dmg:1+ab,col:'#9ff3ff',type:'pellet',life:70});SFX.shot();}
+  else if(lv===1){shots.push({x,y:y-3,vx:dir*11,vy:0,w:18,h:10,dmg:2+ab,col:'#28e6ff',type:'mid',life:70});SFX.bigshot();}
+  else{shots.push({x,y:y-8,vx:dir*12,vy:0,w:30,h:20,dmg:4+ab*2,col:'#aaf0ff',type:'full',life:80,trail:true});SFX.bigshot();addShake(3);}
+}
+function fireWeapon(p){
+  const dir=p.face, x=p.x+(dir>0?p.w:-6), y=p.y+12, w=G.weapon;
+  if(G.wEnergy[w]<=0){SFX.blip();return;}
+  const wc=(STAGES.find(s=>s.id===w)||{}).wcol||'#fff';
+  p.muzT=12;p.muzBig=true;p.muzCol=wc;
+  for(let k=0;k<7;k++)spawnP(p.x+(dir>0?p.w+4:-4),p.y+16,dir*rnd(1,3),rnd(-1.5,1.5),rnd(8,16),wc,rnd(1,3),0,true);
+  if(w==='magma'){G.wEnergy[w]-=2;
+    shots.push({x,y:p.y+p.h-8,vx:dir*5.5,vy:0,w:22,h:26,dmg:3,col:'#ff7a2e',type:'magma',life:90,ground:true});
+    SFX.bigshot();}
+  else if(w==='cryo'){G.wEnergy[w]-=1.5;
+    for(let i=-1;i<=1;i++)shots.push({x,y,vx:dir*10,vy:i*2.2,w:14,h:8,dmg:2,col:'#9fdcff',type:'frost',life:60});
+    SFX.shot();}
+  else if(w==='storm'){G.wEnergy[w]-=2;
+    shots.push({x,y:y-2,vx:dir*14,vy:0,w:34,h:8,dmg:3,col:'#ffe34a',type:'lance',life:50,pierce:true});
+    tone(1500,.15,'sawtooth',.06,-900);}
+  else if(w==='bio'){G.wEnergy[w]-=3;
+    for(let i=0;i<3;i++)shots.push({x:p.x+p.w/2,y:p.y+p.h/2,orbit:true,ang:i*TAU/3,rad:10,dmg:2,
+      w:12,h:12,col:'#5dff7a',type:'thorn',life:160,owner:p});
+    SFX.pickup();}
+  else if(w==='abyss'){G.wEnergy[w]-=2;  /* TIDE BREAKER: heavy wave that arcs */
+    shots.push({x,y:y-4,vx:dir*7,vy:-3,w:20,h:16,dmg:3,col:'#2aa8ff',type:'tide',life:80,grav:.18,trail:true});
+    tone(300,.18,'sine',.08,-120);}
+  else if(w==='shadow'){G.wEnergy[w]-=1.5;  /* SHADE BOLT: fast double bolt that splits */
+    for(const o of [-3,3])shots.push({x,y:y+o,vx:dir*13,vy:0,w:16,h:6,dmg:2,col:'#a36aff',type:'shade',life:55,pierce:true});
+    tone(700,.1,'triangle',.06,-300);}
+  else if(w==='metal'){G.wEnergy[w]-=2.5;  /* RIVET STORM: spread of 4 bouncing rivets */
+    for(let i=0;i<4;i++)shots.push({x,y:y-6,vx:dir*(7+i),vy:-4+i*1.2,w:9,h:9,dmg:2,col:'#c9d2e0',type:'rivet',life:80,grav:.32,bounce:2});
+    noise(.1,.07,2400);tone(520,.08,'square',.05);}
+  else if(w==='sand'){G.wEnergy[w]-=3;  /* QUAKE DRIVER: ground shockwave both directions */
+    for(const d of [-1,1])shots.push({x:p.x+p.w/2,y:p.y+p.h-6,vx:d*6,vy:0,w:18,h:22,dmg:3,col:'#e0b070',type:'quake',life:70,ground:true});
+    addShake(5);SFX.boom();}
+  G.wEnergy[w]=Math.max(0,G.wEnergy[w]);
+}
+function updateShots(level){
+  for(let i=shots.length-1;i>=0;i--){const s=shots[i];s.life--;
+    if(s.orbit){s.ang+=.13;s.rad=Math.min(46,s.rad+1.2);
+      s.x=s.owner.x+s.owner.w/2+Math.cos(s.ang)*s.rad-s.w/2;
+      s.y=s.owner.y+s.owner.h/2+Math.sin(s.ang)*s.rad-s.h/2;}
+    else{s.x+=s.vx;s.y+=s.vy||0;
+      if(s.grav)s.vy=(s.vy||0)+s.grav;
+      if(s.type==='magma'||s.type==='quake'){ // crawl along ground
+        let onG=false; for(const pl of level.plats){if(s.x+s.w/2>pl.x&&s.x+s.w/2<pl.x+pl.w&&Math.abs((s.y+s.h)-pl.y)<14){s.y=pl.y-s.h;onG=true;break;}}
+        if(!onG)s.y+=4;
+        const ec=s.type==='quake'?'#f0c888':'#ffb070';
+        if(G.t%3===0)spawnP(s.x+rnd(s.w),s.y+rnd(s.h),rnd(-1,1),rnd(-2,-.5),20,ec,3,0,true);}
+      if(s.bounce&&s.vy>0){ // rivet bounces off platforms
+        for(const pl of level.plats){if(s.x+s.w/2>pl.x&&s.x+s.w/2<pl.x+pl.w&&s.y+s.h>pl.y&&s.y+s.h<pl.y+20){
+          s.y=pl.y-s.h;s.vy=-s.vy*0.6;if(--s.bounce<=0)s.vy=Math.min(s.vy,-2);noise(.04,.03,3000);break;}}}
+      if(s.trail&&G.t%2===0)spawnP(s.x,s.y+s.h/2,rnd(-1,1),rnd(-1,1),15,s.col,3,0,true);}
+    if(s.life<=0||s.x<-60||s.x>level.w+60||s.y>level.h+80)shots.splice(i,1);
+  }
+  for(let i=eshots.length-1;i>=0;i--){const s=eshots[i];s.life--;
+    s.x+=s.vx;s.y+=s.vy;if(s.grav)s.vy+=s.grav;
+    if(s.hom&&player){const dx=(player.x+player.w/2)-(s.x+s.w/2),dy=(player.y+player.h/2)-(s.y+s.h/2),d=Math.hypot(dx,dy)||1;
+      s.vx=lerp(s.vx,dx/d*s.hom,.05);s.vy=lerp(s.vy,dy/d*s.hom,.05);}
+    if(s.life<=0||s.x<-80||s.x>level.w+80||s.y<-80||s.y>level.h+120)eshots.splice(i,1);}
+}
+function drawShots(cam){
+  for(const s of shots){
+    CX.shadowColor=s.col;CX.shadowBlur=12;CX.fillStyle=s.col;
+    const x=s.x-cam.x,y=s.y-cam.y;
+    if(s.type==='full'){CX.beginPath();CX.ellipse(x+s.w/2,y+s.h/2,s.w/2,s.h/2,0,0,TAU);CX.fill();
+      CX.fillStyle='#fff';CX.beginPath();CX.ellipse(x+s.w/2,y+s.h/2,s.w/4,s.h/4,0,0,TAU);CX.fill();}
+    else if(s.type==='thorn'){CX.save();CX.translate(x+6,y+6);CX.rotate(s.ang*2);
+      CX.beginPath();for(let k=0;k<4;k++){CX.rotate(TAU/4);CX.moveTo(0,0);CX.lineTo(8,0);CX.lineTo(3,3);}CX.fill();CX.restore();}
+    else if(s.type==='magma'||s.type==='quake'){CX.beginPath();CX.moveTo(x,y+s.h);
+      CX.quadraticCurveTo(x+s.w/2,y-6+Math.sin(G.t*.4)*4,x+s.w,y+s.h);CX.fill();}
+    else if(s.type==='tide'){CX.beginPath();CX.ellipse(x+s.w/2,y+s.h/2,s.w/2,s.h/2,0,0,TAU);CX.fill();
+      CX.fillStyle='#bfeaff';CX.beginPath();CX.arc(x+s.w/2,y+s.h/2,s.w/4,0,TAU);CX.fill();}
+    else if(s.type==='rivet'){CX.save();CX.translate(x+s.w/2,y+s.h/2);CX.rotate(G.t*.4);
+      CX.fillRect(-s.w/2,-2,s.w,4);CX.fillRect(-2,-s.h/2,4,s.h);CX.restore();}
+    else if(s.type==='shade'){CX.globalAlpha=.85;CX.fillRect(x,y,s.w,s.h);
+      CX.fillStyle='#e8d2ff';CX.fillRect(x+s.w-6,y,6,s.h);CX.globalAlpha=1;}
+    else CX.fillRect(x,y,s.w,s.h);
+    CX.shadowBlur=0;
+  }
+  for(const s of eshots){CX.shadowColor=s.col;CX.shadowBlur=10;CX.fillStyle=s.col;
+    CX.beginPath();CX.arc(s.x-cam.x+s.w/2,s.y-cam.y+s.h/2,s.w/2,0,TAU);CX.fill();CX.shadowBlur=0;}
+}
+
+/* ---------- player ---------- */
+let player=null;
+class Player{
+  constructor(cdef){
+    this.c=cdef; this.x=80;this.y=100;this.w=22;this.h=34;
+    this.vx=0;this.vy=0;this.face=1;this.onG=false;this.wall=0;
+    this.hp=G.maxHP;this.inv=0;this.charge=0;this.dashT=0;this.dashCD=0;
+    this.jumps=0;this.anim=0;this.slashT=0;this.combo=0;this.dead=false;this.deadT=0;
+    this.shootT=0;this.airDashUsed=false;
+    /* provision for double & triple jumps: everyone gets 2, Thruster Core adds a 3rd */
+    this.maxJumps = 2 + (G.upgrades.jump?1:0);
+  }
+  get box(){return{x:this.x,y:this.y,w:this.w,h:this.h};}
+  hurt(d){
+    if(this.inv>0||this.dead)return;
+    if(G.upgrades.armor)d=Math.max(1,Math.round(d*0.6)); /* Armor Plate: -40% */
+    this.hp-=d;this.inv=60;SFX.hurt();addShake(5);flash=6;flashCol='rgba(255,60,60,.25)';
+    burst(this.x+this.w/2,this.y+this.h/2,12,this.c.col,3);
+    this.vx=-this.face*3;this.vy=-3;
+    if(G.state==='PLAY'&&G.stage==='core')G.noDamageFinal=false;
+    if(this.hp<=0){this.dead=true;this.deadT=0;SFX.bigboom();stopSong();
+      for(let i=0;i<24;i++)setTimeout(()=>burst(this.x+rnd(this.w),this.y+rnd(this.h),6,i%2?this.c.col:'#fff',5),i*40);}
+  }
+  update(level){
+    if(this.dead){this.deadT++;if(this.deadT>120){G.deaths++;startStage(G.stage,true);}return;}
+    this.anim++;if(this.inv>0)this.inv--;if(this.dashCD>0)this.dashCD--;if(this.shootT>0)this.shootT--;
+    const onG=this.onG;
+    const dashLen=G.upgrades.dash?22:16, dashSpd=this.c.dashSpd*(G.upgrades.dash?1.18:1);
+    /* dash — air-dash allowed once aloft (refreshes when Dash Booster owned, or on landing) */
+    if(tap('DS')&&this.dashCD<=0&&this.dashT<=0&&(onG||!this.airDashUsed)){
+      this.dashT=dashLen;this.dashCD=10;SFX.dash();if(!onG)this.airDashUsed=true;
+      if(G.upgrades.dash)this.inv=Math.max(this.inv,6); /* brief dash i-frames */
+      for(let i=0;i<6;i++)spawnP(this.x+this.w/2,this.y+this.h-4,-this.face*rnd(1,3),rnd(-1,0),18,this.c.col,3,0,true);}
+    /* horizontal */
+    let mv=0; if(Keys.L)mv=-1; if(Keys.R)mv=1;
+    if(mv)this.face=mv;
+    if(this.dashT>0){this.dashT--;this.vx=this.face*dashSpd;
+      if(G.t%2===0)spawnP(this.x+(this.face>0?0:this.w),this.y+rnd(this.h),-this.face*2,0,14,this.c.col,2,0,true);}
+    else this.vx=mv*this.c.spd;
+    /* jump — single / double / triple */
+    if(tap('J')){
+      if(onG){this.vy=this.c.jump;this.jumps=1;SFX.jump();}
+      else if(this.wall){this.vy=this.c.jump*.95;this.vx=-this.wall*5;this.face=-this.wall;this.jumps=1;this.airDashUsed=false;SFX.jump();
+        burst(this.x+(this.wall>0?this.w:0),this.y+this.h/2,8,'#fff',2,2);}
+      else if(this.jumps<this.maxJumps){this.jumps++;this.vy=this.c.jump*(this.jumps>=3?0.82:0.9);SFX.jump();
+        const ring=this.jumps>=3?'#ffe34a':this.c.col;
+        for(let i=0;i<12;i++){const a=i/12*TAU;spawnP(this.x+this.w/2+Math.cos(a)*8,this.y+this.h,Math.cos(a)*2,Math.sin(a)*1+1,16,ring,2.5,0,true);}}
+    }
+    if(!Keys.J&&this.vy<-4)this.vy=-4; /* variable jump */
+    /* gravity & wall slide */
+    this.vy+=.55; if(this.vy>11)this.vy=11;
+    this.wall=0;
+    /* attack */
+    if(G.weapon!=='buster'){
+      if(tap('F')){fireWeapon(this);this.shootT=18;}
+      this.charge=0;
+      if(this.slashT>0)this.slashT--;
+    }else if(this.c.melee){
+      if(tap('F')&&this.slashT<=0){this.slashT=14;this.combo=(this.combo+1)%3;SFX.slash();}
+      if(this.slashT>0){this.slashT--;
+        const r={x:this.x+(this.face>0?this.w-4:-30),y:this.y-2,w:34,h:this.h+4};
+        hitEnemies(r,(this.combo===2?3:2)+(G.upgrades.arm?1:0),'slash');}
+    }else{
+      if(tap
