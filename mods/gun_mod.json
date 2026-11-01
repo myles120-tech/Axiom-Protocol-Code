@@ -1,4 +1,4 @@
-{
+
   const novaRifleMod = {
   id: "nova-rifle-mod",
   name: "Nova Rifle Mod",
@@ -104,6 +104,7 @@ const manifest = {
 
       if (window.SFX && window.SFX.blip) window.SFX.blip();
     };
+    
 
     // optional: unlock it immediately for testing
     window.G.weapon = "nova-rifle";
