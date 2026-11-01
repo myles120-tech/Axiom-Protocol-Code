@@ -1,5 +1,5 @@
 {
   "mods": [
-    "/mods/example_boss.json"
+    "./example_boss.json"
   ]
 }
