@@ -3,26 +3,7 @@
   "name": "Nova Rifle Mod",
   "type": "gun",
   "guns": [
-    {{
-  "id": "nova-rifle-mod",
-  "name": "Nova Rifle Mod",
-  "type": "gun",
-  "guns": [
     {
-      "id": "nova-rifle",
-      "name": "Nova Rifle",
-      "color": "#67f7ff",
-      "damage": 6,
-      "fireRate": 4,
-      "projectile": "plasma",
-      "burst": 3,
-      "description": "Fast plasma rifle with a spread burst."
-    }
-  ],
-  "settings": {
-    "allowCustomGuns": true
-  }
-}
       "id": "nova-rifle",
       "name": "Nova Rifle",
       "color": "#67f7ff",
