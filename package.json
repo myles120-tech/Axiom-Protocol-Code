@@ -17,7 +17,7 @@
     "productName": "Axiom Protocol",
     "files": [
       "main.js",
-      "index.html",
+      "Axiom Protocol.html",
       "mods/**/*",
       "LICENSE"
     ],
