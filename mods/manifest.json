@@ -1,5 +1,6 @@
 {
   "mods": [
-    "./example_boss.json"
+    "./example_boss.json",
+    "./gun_mod.json"
   ]
 }
