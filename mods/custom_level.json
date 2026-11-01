@@ -1,0 +1,17 @@
+{
+  "id": "mod-test-level",
+  "name": "Mod Test Level",
+  "type": "level",
+  "stage": {
+    "id": "mod-void",
+    "name": "MOD VOID",
+    "boss": "NOVA RIFT",
+    "weapon": "nova-rifle",
+    "theme": "glitch",
+    "difficulty": 1.4
+  },
+  "settings": {
+    "allowCustomLevels": true,
+    "debugStartupWeapon": "nova-rifle"
+  }
+}
