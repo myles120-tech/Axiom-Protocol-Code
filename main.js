@@ -2,19 +2,46 @@ const { app, BrowserWindow, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
+function normalizeStage(stage, fallbackId = 'mod-void') {
+  if (!stage || typeof stage !== 'object') return null;
+
+  const normalized = {
+    id: stage.id || fallbackId,
+    name: stage.name || 'MOD STAGE',
+    boss: stage.boss || 'UNKNOWN BOSS',
+    weapon: stage.weapon || 'buster',
+    wcol: stage.wcol || '#67f7ff',
+    sky: Array.isArray(stage.sky) && stage.sky.length >= 3 ? stage.sky : ['#050814', '#0d1738', '#1d2d67'],
+    plat: stage.plat || '#1a2347',
+    platEdge: stage.platEdge || '#67f7ff',
+    amb: stage.amb || 'glitch',
+    song: stage.song || 'world',
+    ...stage
+  };
+
+  if (!Array.isArray(normalized.sky) || normalized.sky.length < 3) {
+    normalized.sky = ['#050814', '#0d1738', '#1d2d67'];
+  }
+
+  return normalized;
+}
+
 function loadMods() {
   const modsDir = path.join(__dirname, 'mods');
-  if (!fs.existsSync(modsDir)) return [];
+  const manifestPath = path.join(modsDir, 'manifest.json');
+
+  if (!fs.existsSync(modsDir) || !fs.existsSync(manifestPath)) {
+    return [];
+  }
 
   try {
-    const manifestPath = path.join(modsDir, 'manifest.json');
-    if (!fs.existsSync(manifestPath)) return [];
-
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     const entries = Array.isArray(manifest.mods) ? manifest.mods : [];
     const mods = [];
 
     for (const rel of entries) {
+      if (typeof rel !== 'string') continue;
+
       const filePath = path.resolve(modsDir, rel);
       if (!fs.existsSync(filePath)) continue;
 
@@ -52,11 +79,8 @@ function patchGameRuntime(mainWindow) {
 
           for (const mod of mods || []) {
             if (mod && mod.type === 'level' && mod.stage) {
-              customStages.push({
-                ...mod.stage,
-                weapon: mod.stage.weapon || 'buster',
-                wcol: mod.stage.wcol || '#67f7ff'
-              });
+              const stage = normalizeStage ? normalizeStage(mod.stage, mod.stage && mod.stage.id ? mod.stage.id : 'mod-void') : mod.stage;
+              if (stage) customStages.push(stage);
             }
 
             if (mod && mod.type === 'gun' && Array.isArray(mod.guns)) {
@@ -79,25 +103,28 @@ function patchGameRuntime(mainWindow) {
           if (!window.__axiomModPatched) {
             window.__axiomModPatched = true;
 
+            window.G = window.G || {};
+            window.G.beaten = window.G.beaten || {};
+            window.G.wEnergy = window.G.wEnergy || {};
+
             if (customStages.length) {
               window.STAGES = Array.isArray(window.STAGES) ? window.STAGES : [];
               for (const stage of customStages) {
                 if (!window.STAGES.some(s => s.id === stage.id)) {
                   window.STAGES.push(stage);
                 }
+                window.G.beaten[stage.id] = true;
               }
             }
 
-            window.G = window.G || {};
-            window.G.wEnergy = window.G.wEnergy || {};
             for (const gunId of Object.keys(customWeapons)) {
               window.G.wEnergy[gunId] = 28;
             }
 
             if (!window.G.weapon && customStages.length) {
-              const firstStageWeapon = customStages[0].weapon;
-              if (firstStageWeapon && customWeapons[firstStageWeapon]) {
-                window.G.weapon = firstStageWeapon;
+              const firstWeapon = customStages[0].weapon;
+              if (firstWeapon && customWeapons[firstWeapon]) {
+                window.G.weapon = firstWeapon;
               }
             }
 
@@ -122,10 +149,10 @@ function patchGameRuntime(mainWindow) {
 
               window.G.wEnergy[weaponId] = Math.max(0, (window.G.wEnergy[weaponId] || 0) - 2);
 
-              const burstCount = Math.max(1, Number(gun.burst) || 3);
+              const count = Math.max(1, Number(gun.burst) || 3);
               const spread = [];
-              for (let i = 0; i < burstCount; i++) {
-                spread.push((i - (burstCount - 1) / 2) * 1.2);
+              for (let i = 0; i < count; i++) {
+                spread.push((i - (count - 1) / 2) * 1.2);
               }
 
               for (const v of spread) {
